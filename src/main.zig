@@ -159,15 +159,21 @@ export fn frame() void {
     //state.ry += 2.0 * dt;
     const vs_params = computeVsParams(state.rx, state.ry);
 
+    const d = &state.drone;
+
     state.drone.velo.y -= if (input_state.upPressed) 1 else 0;
     state.drone.velo.x += if(input_state.leftPressed) 1 else (if (input_state.rightPressed) -1 else 0);
 
     state.drone.pos = vec3.add(state.drone.pos, vec3.mul(state.drone.velo, dt));
     state.drone.velo.y += 9.81 * dt;
 
-    if(state.drone.pos.y > 0)    {
+    const veloNorm = vec3.norm(d.velo);
+    d.velo = vec3.add(d.velo, vec3.mul(veloNorm, -0.1));
+
+    if(state.drone.pos.y > 0) {
         state.drone.pos.y = 0;
-        state.drone.velo.y = -state.drone.velo.y * 0.4;
+        state.drone.velo.y *= -0.4;
+        state.drone.velo.x *= 0.5;
     }
 
     sg.beginPass(.{ .action = state.pass_action, .swapchain = sglue.swapchain() });
