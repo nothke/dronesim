@@ -16,8 +16,12 @@ const std = @import("std");
 const state = struct {
     var rx: f32 = 0.0;
     var ry: f32 = 0.0;
-    var posY: f32 = 0.0;
-    var veloY: f32 = 0.0;
+
+    const drone = struct {
+        var pos: vec3 = vec3.zero();
+        var velo: vec3 = vec3.zero();
+    };
+
     var pass_action: sg.PassAction = .{};
     var pip: sg.Pipeline = .{};
     var bind: sg.Bindings = .{};
@@ -27,6 +31,8 @@ const state = struct {
 const input_state = struct {
     var upPressed: bool = false;
     var downPressed: bool = false;
+    var leftPressed: bool = false;
+    var rightPressed: bool = false;
 };
 
 // a vertex struct with position, color and uv-coords
@@ -153,14 +159,15 @@ export fn frame() void {
     //state.ry += 2.0 * dt;
     const vs_params = computeVsParams(state.rx, state.ry);
 
-    state.veloY -= if (input_state.upPressed) 1 else 0;
+    state.drone.velo.y -= if (input_state.upPressed) 1 else 0;
+    state.drone.velo.x += if(input_state.leftPressed) 1 else (if (input_state.rightPressed) -1 else 0);
 
-    state.posY += state.veloY * dt;
-    state.veloY += 9.81 * dt;
+    state.drone.pos = vec3.add(state.drone.pos, vec3.mul(state.drone.velo, dt));
+    state.drone.velo.y += 9.81 * dt;
 
-    if(state.posY > 0)    {
-        state.posY = 0;
-        state.veloY = -state.veloY * 0.4;
+    if(state.drone.pos.y > 0)    {
+        state.drone.pos.y = 0;
+        state.drone.velo.y = -state.drone.velo.y * 0.4;
     }
 
     sg.beginPass(.{ .action = state.pass_action, .swapchain = sglue.swapchain() });
@@ -187,6 +194,8 @@ export fn input(event: ?*const sapp.Event) void {
         switch (ev.key_code) {
             .W => input_state.upPressed = true,
             .S =>  input_state.downPressed = true,
+            .A => input_state.leftPressed = true,
+            .D => input_state.rightPressed = true,
             .SPACE => std.log.info("LOGGG", .{}),
             else => {},
         }
@@ -196,6 +205,8 @@ export fn input(event: ?*const sapp.Event) void {
         switch (ev.key_code) {
             .W => input_state.upPressed = false,
             .S =>  input_state.upPressed = false,
+            .A => input_state.leftPressed = false,
+            .D => input_state.rightPressed = false,
             .SPACE => std.log.info("LOGGG", .{}),
             else => {},
         }
@@ -221,7 +232,7 @@ fn computeVsParams(rx: f32, ry: f32) shd.VsParams {
     const rxm = mat4.rotate(rx, .{ .x = 1.0, .y = 0.0, .z = 0.0 });
     const rym = mat4.rotate(ry, .{ .x = 0.0, .y = 1.0, .z = 0.0 });
     
-    const tm = mat4.translate(vec3.new(0, state.posY, 0));
+    const tm = mat4.translate(state.drone.pos);
     
     var model = mat4.mul(rxm, rym);
     model = mat4.mul(model, tm);
