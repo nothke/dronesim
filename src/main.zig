@@ -1,8 +1,3 @@
-//------------------------------------------------------------------------------
-//  texcube.zig
-//
-//  Texture creation, rendering with texture, packed vertex components.
-//------------------------------------------------------------------------------
 const sokol = @import("sokol");
 const slog = sokol.log;
 const sg = sokol.gfx;
@@ -46,15 +41,6 @@ export fn init() void {
 
     const cs: f32 = 30;
 
-    // Cube vertex buffer with packed vertex formats for color and texture coords.
-    // Note that a vertex format which must be portable across all
-    // backends must only use the normalized integer formats
-    // (BYTE4N, UBYTE4N, SHORT2N, SHORT4N), which can be converted
-    // to floating point formats in the vertex shader inputs.
-    // The reason is that D3D11 cannot convert from non-normalized
-    // formats to floating point inputs (only to integer inputs),
-    // and WebGL2 / GLES2 don't support integer vertex shader inputs.
-    //
     state.bind.vertex_buffers[0] = sg.makeBuffer(.{
         .data = sg.asRange(&[_]Vertex{
             // zig fmt: off
@@ -155,7 +141,7 @@ export fn init() void {
 export fn frame() void {
     const dt: f32 = @floatCast(sapp.frameDuration());
 
-    //state.rx += 1.0 * dt;
+    state.rx += 1.0 * dt;
     //state.ry += 2.0 * dt;
     const vs_params = computeVsParams(state.rx, state.ry);
 
