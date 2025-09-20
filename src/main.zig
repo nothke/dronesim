@@ -11,14 +11,22 @@ const sglue = sokol.glue;
 const vec3 = @import("math.zig").Vec3;
 const mat4 = @import("math.zig").Mat4;
 const shd = @import("shaders/texcube.glsl.zig");
+const std = @import("std");
 
 const state = struct {
     var rx: f32 = 0.0;
     var ry: f32 = 0.0;
+    var posY: f32 = 0.0;
+    var veloY: f32 = 0.0;
     var pass_action: sg.PassAction = .{};
     var pip: sg.Pipeline = .{};
     var bind: sg.Bindings = .{};
     const view: mat4 = mat4.lookat(.{ .x = 0.0, .y = 1.5, .z = 6.0 }, vec3.zero(), vec3.up());
+};
+
+const input_state = struct {
+    var upPressed: bool = false;
+    var downPressed: bool = false;
 };
 
 // a vertex struct with position, color and uv-coords
@@ -137,11 +145,16 @@ export fn init() void {
 }
 
 export fn frame() void {
-    const dt: f32 = @floatCast(sapp.frameDuration() * 60);
+    const dt: f32 = @floatCast(sapp.frameDuration());
 
-    state.rx += 1.0 * dt;
-    state.ry += 2.0 * dt;
+    //state.rx += 1.0 * dt;
+    //state.ry += 2.0 * dt;
     const vs_params = computeVsParams(state.rx, state.ry);
+
+    state.veloY -= if (input_state.upPressed) 1 else 0;
+
+    state.posY += state.veloY * dt;
+    state.veloY += 9.81 * dt;
 
     sg.beginPass(.{ .action = state.pass_action, .swapchain = sglue.swapchain() });
     sg.applyPipeline(state.pip);
@@ -156,11 +169,38 @@ export fn cleanup() void {
     sg.shutdown();
 }
 
+export fn event_cb() void {
+
+}
+
+// #INPUT
+export fn input(event: ?*const sapp.Event) void {
+    const ev = event.?;
+    if (ev.type == .KEY_DOWN) {
+        switch (ev.key_code) {
+            .W => input_state.upPressed = true,
+            .S =>  input_state.downPressed = true,
+            .SPACE => std.log.info("LOGGG", .{}),
+            else => {},
+        }
+    }
+
+    if (ev.type == .KEY_UP) {
+        switch (ev.key_code) {
+            .W => input_state.upPressed = false,
+            .S =>  input_state.upPressed = false,
+            .SPACE => std.log.info("LOGGG", .{}),
+            else => {},
+        }
+    }
+}
+
 pub fn main() void {
     sapp.run(.{
         .init_cb = init,
         .frame_cb = frame,
         .cleanup_cb = cleanup,
+        .event_cb = input,
         .width = 800,
         .height = 600,
         .sample_count = 4,
@@ -173,8 +213,15 @@ pub fn main() void {
 fn computeVsParams(rx: f32, ry: f32) shd.VsParams {
     const rxm = mat4.rotate(rx, .{ .x = 1.0, .y = 0.0, .z = 0.0 });
     const rym = mat4.rotate(ry, .{ .x = 0.0, .y = 1.0, .z = 0.0 });
-    const model = mat4.mul(rxm, rym);
+    
+    const tm = mat4.translate(vec3.new(0, state.posY, 0));
+    
+    var model = mat4.mul(rxm, rym);
+    model = mat4.mul(model, tm);
     const aspect = sapp.widthf() / sapp.heightf();
     const proj = mat4.persp(60.0, aspect, 0.01, 10.0);
+
+
+
     return shd.VsParams{ .mvp = mat4.mul(mat4.mul(proj, state.view), model) };
 }
