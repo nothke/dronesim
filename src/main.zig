@@ -38,6 +38,8 @@ export fn init() void {
         .logger = .{ .func = slog.func },
     });
 
+    const cs: f32 = 30;
+
     // Cube vertex buffer with packed vertex formats for color and texture coords.
     // Note that a vertex format which must be portable across all
     // backends must only use the normalized integer formats
@@ -50,35 +52,35 @@ export fn init() void {
     state.bind.vertex_buffers[0] = sg.makeBuffer(.{
         .data = sg.asRange(&[_]Vertex{
             // zig fmt: off
-            .{ .x = -1.0, .y = -1.0, .z = -1.0, .color = 0xFF0000FF, .u = 0,     .v = 0 },
-            .{ .x =  1.0, .y = -1.0, .z = -1.0, .color = 0xFF0000FF, .u = 32767, .v = 0 },
-            .{ .x =  1.0, .y =  1.0, .z = -1.0, .color = 0xFF0000FF, .u = 32767, .v = 32767 },
-            .{ .x = -1.0, .y =  1.0, .z = -1.0, .color = 0xFF0000FF, .u = 0,     .v = 32767 },
+            .{ .x = -cs, .y = -1.0, .z = -cs, .color = 0xFF0000FF, .u = 0,     .v = 0 },
+            .{ .x =  cs, .y = -1.0, .z = -cs, .color = 0xFF0000FF, .u = 32767, .v = 0 },
+            .{ .x =  cs, .y =  1.0, .z = -cs, .color = 0xFF0000FF, .u = 32767, .v = 32767 },
+            .{ .x = -cs, .y =  1.0, .z = -cs, .color = 0xFF0000FF, .u = 0,     .v = 32767 },
 
-            .{ .x = -1.0, .y = -1.0, .z =  1.0, .color = 0xFF00FF00, .u = 0,     .v = 0 },
-            .{ .x =  1.0, .y = -1.0, .z =  1.0, .color = 0xFF00FF00, .u = 32767, .v = 0 },
-            .{ .x =  1.0, .y =  1.0, .z =  1.0, .color = 0xFF00FF00, .u = 32767, .v = 32767 },
-            .{ .x = -1.0, .y =  1.0, .z =  1.0, .color = 0xFF00FF00, .u = 0,     .v = 32767 },
+            .{ .x = -cs, .y = -1.0, .z =  cs, .color = 0xFF00FF00, .u = 0,     .v = 0 },
+            .{ .x =  cs, .y = -1.0, .z =  cs, .color = 0xFF00FF00, .u = 32767, .v = 0 },
+            .{ .x =  cs, .y =  1.0, .z =  cs, .color = 0xFF00FF00, .u = 32767, .v = 32767 },
+            .{ .x = -cs, .y =  1.0, .z =  cs, .color = 0xFF00FF00, .u = 0,     .v = 32767 },
 
-            .{ .x = -1.0, .y = -1.0, .z = -1.0, .color = 0xFFFF0000, .u = 0,     .v = 0 },
-            .{ .x = -1.0, .y =  1.0, .z = -1.0, .color = 0xFFFF0000, .u = 32767, .v = 0 },
-            .{ .x = -1.0, .y =  1.0, .z =  1.0, .color = 0xFFFF0000, .u = 32767, .v = 32767 },
-            .{ .x = -1.0, .y = -1.0, .z =  1.0, .color = 0xFFFF0000, .u = 0,     .v = 32767 },
+            .{ .x = -cs, .y = -1.0, .z = -cs, .color = 0xFFFF0000, .u = 0,     .v = 0 },
+            .{ .x = -cs, .y =  1.0, .z = -cs, .color = 0xFFFF0000, .u = 32767, .v = 0 },
+            .{ .x = -cs, .y =  1.0, .z =  cs, .color = 0xFFFF0000, .u = 32767, .v = 32767 },
+            .{ .x = -cs, .y = -1.0, .z =  cs, .color = 0xFFFF0000, .u = 0,     .v = 32767 },
 
-            .{ .x =  1.0, .y = -1.0, .z = -1.0, .color = 0xFFFF007F, .u = 0,     .v = 0 },
-            .{ .x =  1.0, .y =  1.0, .z = -1.0, .color = 0xFFFF007F, .u = 32767, .v = 0 },
-            .{ .x =  1.0, .y =  1.0, .z =  1.0, .color = 0xFFFF007F, .u = 32767, .v = 32767 },
-            .{ .x =  1.0, .y = -1.0, .z =  1.0, .color = 0xFFFF007F, .u = 0,     .v = 32767 },
+            .{ .x =  cs, .y = -1.0, .z = -cs, .color = 0xFFFF007F, .u = 0,     .v = 0 },
+            .{ .x =  cs, .y =  1.0, .z = -cs, .color = 0xFFFF007F, .u = 32767, .v = 0 },
+            .{ .x =  cs, .y =  1.0, .z =  cs, .color = 0xFFFF007F, .u = 32767, .v = 32767 },
+            .{ .x =  cs, .y = -1.0, .z =  cs, .color = 0xFFFF007F, .u = 0,     .v = 32767 },
 
-            .{ .x = -1.0, .y = -1.0, .z = -1.0, .color = 0xFFFF7F00, .u = 0,     .v = 0 },
-            .{ .x = -1.0, .y = -1.0, .z =  1.0, .color = 0xFFFF7F00, .u = 32767, .v = 0 },
-            .{ .x =  1.0, .y = -1.0, .z =  1.0, .color = 0xFFFF7F00, .u = 32767, .v = 32767 },
-            .{ .x =  1.0, .y = -1.0, .z = -1.0, .color = 0xFFFF7F00, .u = 0,     .v = 32767 },
+            .{ .x = -cs, .y = -1.0, .z = -cs, .color = 0xFFFF7F00, .u = 0,     .v = 0 },
+            .{ .x = -cs, .y = -1.0, .z =  cs, .color = 0xFFFF7F00, .u = 32767, .v = 0 },
+            .{ .x =  cs, .y = -1.0, .z =  cs, .color = 0xFFFF7F00, .u = 32767, .v = 32767 },
+            .{ .x =  cs, .y = -1.0, .z = -cs, .color = 0xFFFF7F00, .u = 0,     .v = 32767 },
 
-            .{ .x = -1.0, .y =  1.0, .z = -1.0, .color = 0xFF007FFF, .u = 0,     .v = 0 },
-            .{ .x = -1.0, .y =  1.0, .z =  1.0, .color = 0xFF007FFF, .u = 32767, .v = 0 },
-            .{ .x =  1.0, .y =  1.0, .z =  1.0, .color = 0xFF007FFF, .u = 32767, .v = 32767 },
-            .{ .x =  1.0, .y =  1.0, .z = -1.0, .color = 0xFF007FFF, .u = 0,     .v = 32767 },
+            .{ .x = -cs, .y =  1.0, .z = -cs, .color = 0xFF007FFF, .u = 0,     .v = 0 },
+            .{ .x = -cs, .y =  1.0, .z =  cs, .color = 0xFF007FFF, .u = 32767, .v = 0 },
+            .{ .x =  cs, .y =  1.0, .z =  cs, .color = 0xFF007FFF, .u = 32767, .v = 32767 },
+            .{ .x =  cs, .y =  1.0, .z = -cs, .color = 0xFF007FFF, .u = 0,     .v = 32767 },
             // zig fmt: on
         }),
     });
@@ -156,6 +158,11 @@ export fn frame() void {
     state.posY += state.veloY * dt;
     state.veloY += 9.81 * dt;
 
+    if(state.posY > 0)    {
+        state.posY = 0;
+        state.veloY = -state.veloY * 0.4;
+    }
+
     sg.beginPass(.{ .action = state.pass_action, .swapchain = sglue.swapchain() });
     sg.applyPipeline(state.pip);
     sg.applyBindings(state.bind);
@@ -219,7 +226,7 @@ fn computeVsParams(rx: f32, ry: f32) shd.VsParams {
     var model = mat4.mul(rxm, rym);
     model = mat4.mul(model, tm);
     const aspect = sapp.widthf() / sapp.heightf();
-    const proj = mat4.persp(60.0, aspect, 0.01, 10.0);
+    const proj = mat4.persp(60.0, aspect, 0.01, 1000.0);
 
 
 
