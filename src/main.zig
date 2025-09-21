@@ -147,8 +147,8 @@ fn rawInputAxis(positive: bool, negative: bool) f32 {
 export fn frame() void {
     const dt: f32 = @floatCast(sapp.frameDuration());
 
-    const dUp = vec3.new(state.view.m[0][2], state.view.m[1][2], state.view.m[2][2]);
-    _ = dUp;
+    const dUp = vec3.new(state.view.m[0][1], state.view.m[1][1], state.view.m[2][1]);
+
 
     const d = &state.drone;
 
@@ -156,7 +156,7 @@ export fn frame() void {
     const xAccel: f32 = rawInputAxis(input_state.leftPressed, input_state.rightPressed);
     const rotXAccel: f32 = rawInputAxis(input_state.pitchDownPressed, input_state.pitchUpPressed);
 
-    d.velo.y += -yAccel;
+    d.velo = vec3.add(d.velo, vec3.mul(dUp, -yAccel));
     d.velo.x += xAccel;
 
     d.angVeloX += rotXAccel * dt * 100;
