@@ -431,10 +431,6 @@ export fn frame() void {
     drawCube(&vp, vec3.new(220, 0, 0));
     drawCube(&vp, vec3.new(0, 0, 220));
 
-    for (0..10) |x| {
-
-    }
-
     sg.endPass();
     sg.commit();
 }
