@@ -21,6 +21,8 @@ const state = struct {
     var pip: sg.Pipeline = .{};
     var bind: sg.Bindings = .{};
     var view: mat4 = mat4.identity();
+
+    var physics_system: *phy.PhysicsSystem = undefined;
 };
 
 const input_state = struct {
@@ -175,20 +177,20 @@ const ContactListener = extern struct {
 
 // Nothkes physics
 
-fn createBoxBody(body_interface: *phy.BodyInterface, size: vec3, pos: vec3) !void {
+fn createBoxBody(body_interface: *phy.BodyInterface, size: vec3, pos: vec3, moving: bool) !void {
     const floor_shape_settings = try phy.BoxShapeSettings.create(.{ size.x, size.y, size.z });
     defer floor_shape_settings.asShapeSettings().release();
 
     const floor_shape = try floor_shape_settings.asShapeSettings().createShape();
     defer floor_shape.release();
 
-    _ = body_interface.createAndAddBody(.{
+    _ = try body_interface.createAndAddBody(.{
         .position = .{ pos.x, pos.y, pos.z, 0 },
         .rotation = .{ 0, 0, 0, 1 },
         .shape = floor_shape,
-        .motion_type = .static,
-        .object_layer = object_layers.non_moving,
-    }, .activate) catch unreachable;
+        .motion_type = if (moving) .dynamic else .static,
+        .object_layer = if (moving) object_layers.moving else object_layers.non_moving,
+    }, .activate);
 }
 
 // Enf of physics
@@ -314,7 +316,7 @@ export fn init() void {
     const contact_listener = alloc.create(ContactListener) catch unreachable;
     contact_listener.* = .{};
 
-    const physics_system = phy.PhysicsSystem.create(
+    state.physics_system = phy.PhysicsSystem.create(
         @as(*const phy.BroadPhaseLayerInterface, @ptrCast(broadphase_layer_interface)),
         @as(*const phy.ObjectVsBroadPhaseLayerFilter, @ptrCast(object_vs_broad_phase_layer_filter)),
         @as(*const phy.ObjectLayerPairFilter, @ptrCast(object_layer_pair_filter)),
@@ -327,11 +329,13 @@ export fn init() void {
     ) catch unreachable;
 
     {
-        const body_interface = physics_system.getBodyInterfaceMut();
+        const body_interface = state.physics_system.getBodyInterfaceMut();
 
-        createBoxBody(body_interface, vec3.new(100, 1, 100), vec3.zero()) catch unreachable;
+        createBoxBody(body_interface, vec3.new(100, 1, 100), vec3.zero(), false) catch unreachable;
 
-        physics_system.optimizeBroadPhase();
+        createBoxBody(body_interface, vec3.new(0.5, 0.5, 0.5), vec3.new(0, 10, 0), true) catch unreachable;
+
+        state.physics_system.optimizeBroadPhase();
     }
 }
 
@@ -343,8 +347,8 @@ export fn frame() void {
     const dt: f32 = @floatCast(sapp.frameDuration());
 
     const dUp = vec3.new(state.view.m[0][1], state.view.m[1][1], state.view.m[2][1]);
-    const dRight = vec3.new(state.view.m[0][0], state.view.m[1][0], state.view.m[2][0]);
-    const dForward = vec3.new(state.view.m[0][2], state.view.m[1][2], state.view.m[2][2]);
+    //const dRight = vec3.new(state.view.m[0][0], state.view.m[1][0], state.view.m[2][0]);
+    //const dForward = vec3.new(state.view.m[0][2], state.view.m[1][2], state.view.m[2][2]);
 
     const d = &state.drone;
 
@@ -378,12 +382,30 @@ export fn frame() void {
         state.drone.velo.x *= 0.5;
     }
 
+    // physics
+    const bodies = state.physics_system.getBodiesUnsafe();
+    for (bodies) |body| {
+        if (!phy.isValidBodyPointer(body) or body.motion_properties == null) continue;
+
+        if(body.motion_type == .dynamic) {
+
+            var v = mat4.identity();
+            const dpos = body.getWorldTransform().position;
+            v = v.mul(mat4.translate(vec3.new(dpos[0], dpos[1], dpos[2])));
+            state.view = v;
+        }
+    }
+
+    state.physics_system.update(dt, .{}) catch unreachable;
+
+    // drawing
+
     {
-        var v = mat4.identity();
-        v = mat4.mul(v, mat4.rotate(d.rot.x, dRight));
-        v = mat4.mul(v, mat4.rotate(d.rot.z, dForward));
-        v = mat4.mul(v, mat4.translate(d.pos));
-        state.view = v;
+        // var v = mat4.identity();
+        // v = mat4.mul(v, mat4.rotate(d.rot.x, dRight));
+        // v = mat4.mul(v, mat4.rotate(d.rot.z, dForward));
+        // v = mat4.mul(v, mat4.translate(d.pos));
+        // state.view = v;
     }
 
     const model = mat4.identity();
