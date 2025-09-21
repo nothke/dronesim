@@ -308,7 +308,25 @@ export fn init() void {
     },
     ) catch unreachable;
 
-    _ = physics_system;
+    {
+        const body_interface = physics_system.getBodyInterfaceMut();
+
+        const floor_shape_settings = phy.BoxShapeSettings.create(.{100, 0, 100}) catch unreachable;
+        defer floor_shape_settings.asShapeSettings().release();
+
+        const floor_shape = floor_shape_settings.asShapeSettings().createShape() catch unreachable;
+        defer floor_shape.release();
+
+        _ = body_interface.createAndAddBody(.{
+            .position = .{0,0,0,0},
+            .rotation = .{0,0,0,1},
+            .shape = floor_shape,
+            .motion_type = .static,
+            .object_layer = object_layers.non_moving,
+        }, .activate) catch unreachable;
+
+        physics_system.optimizeBroadPhase();
+    }
 }
 
 fn rawInputAxis(positive: bool, negative: bool) f32 {
