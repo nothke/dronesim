@@ -140,6 +140,10 @@ export fn init() void {
     };
 }
 
+fn rawInputAxis(positive: bool, negative: bool) f32 {
+    return if (positive) 1 else (if (negative) -1 else 0);
+}
+
 export fn frame() void {
     const dt: f32 = @floatCast(sapp.frameDuration());
 
@@ -148,9 +152,9 @@ export fn frame() void {
 
     const d = &state.drone;
 
-    const yAccel: f32 = if (input_state.upPressed) 1 else 0;
-    const xAccel: f32 = if (input_state.leftPressed) 1 else (if (input_state.rightPressed) -1 else 0);
-    const rotXAccel: f32 = if (input_state.pitchDownPressed) 1 else (if (input_state.pitchUpPressed) -1 else 0);
+    const yAccel: f32 = rawInputAxis(input_state.upPressed, false);
+    const xAccel: f32 = rawInputAxis(input_state.leftPressed, input_state.rightPressed);
+    const rotXAccel: f32 = rawInputAxis(input_state.pitchDownPressed, input_state.pitchUpPressed);
 
     d.velo.y += -yAccel;
     d.velo.x += xAccel;
