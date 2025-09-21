@@ -9,9 +9,6 @@ const shd = @import("shaders/texcube.glsl.zig");
 const std = @import("std");
 
 const state = struct {
-    var rx: f32 = 0.0;
-    var ry: f32 = 0.0;
-
     const drone = struct {
         var pos: vec3 = vec3.zero();
         var velo: vec3 = vec3.zero();
@@ -146,14 +143,17 @@ export fn init() void {
 export fn frame() void {
     const dt: f32 = @floatCast(sapp.frameDuration());
 
-    //state.rx += 1.0 * dt;
-    //state.ry += 2.0 * dt;
+    const dUp = vec3.new(state.view.m[0][2], state.view.m[1][2], state.view.m[2][2]);
+    _ = dUp;
 
     const d = &state.drone;
 
-    d.velo.y -= if (input_state.upPressed) 1 else 0;
-    d.velo.x += if(input_state.leftPressed) 1 else (if (input_state.rightPressed) -1 else 0);
+    const yAccel: f32 = if (input_state.upPressed) 1 else 0;
+    const xAccel: f32 = if (input_state.leftPressed) 1 else (if (input_state.rightPressed) -1 else 0);
     const rotXAccel: f32 = if (input_state.pitchDownPressed) 1 else (if (input_state.pitchUpPressed) -1 else 0);
+
+    d.velo.y += -yAccel;
+    d.velo.x += xAccel;
 
     d.angVeloX += rotXAccel * dt * 100;
     d.rotX += d.angVeloX * dt;
@@ -179,8 +179,16 @@ export fn frame() void {
         state.view = v;
     }
 
-    const vs_params = computeVsParams(state.rx, state.ry);
+    const model = mat4.identity();
 
+    // projection
+    const aspect = sapp.widthf() / sapp.heightf();
+    const proj = mat4.persp(90.0, aspect, 0.01, 1000.0);
+    
+    // vs params
+    const vs_params = shd.VsParams{ .mvp = mat4.mul(mat4.mul(proj, state.view), model) };
+
+    // rendering
     sg.beginPass(.{ .action = state.pass_action, .swapchain = sglue.swapchain() });
     sg.applyPipeline(state.pip);
     sg.applyBindings(state.bind);
@@ -236,20 +244,4 @@ pub fn main() void {
         .window_title = "texcube.zig",
         .logger = .{ .func = slog.func },
     });
-}
-
-fn computeVsParams(rx: f32, ry: f32) shd.VsParams {
-    const rxm = mat4.rotate(rx, .{ .x = 1.0, .y = 0.0, .z = 0.0 });
-    const rym = mat4.rotate(ry, .{ .x = 0.0, .y = 1.0, .z = 0.0 });
-    
-    //const tm = mat4.translate(state.drone.pos);
-    
-    const model = mat4.mul(rxm, rym);
-    //model = mat4.mul(model, tm);
-    const aspect = sapp.widthf() / sapp.heightf();
-    const proj = mat4.persp(90.0, aspect, 0.01, 1000.0);
-
-
-
-    return shd.VsParams{ .mvp = mat4.mul(mat4.mul(proj, state.view), model) };
 }
