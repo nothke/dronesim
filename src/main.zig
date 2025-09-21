@@ -173,6 +173,24 @@ const ContactListener = extern struct {
     }
 };
 
+// Nothkes physics
+
+fn createBoxBody(body_interface: *phy.BodyInterface, size: vec3, pos: vec3) !void {
+    const floor_shape_settings = try phy.BoxShapeSettings.create(.{ size.x, size.y, size.z });
+    defer floor_shape_settings.asShapeSettings().release();
+
+    const floor_shape = try floor_shape_settings.asShapeSettings().createShape();
+    defer floor_shape.release();
+
+    _ = body_interface.createAndAddBody(.{
+        .position = .{ pos.x, pos.y, pos.z, 0 },
+        .rotation = .{ 0, 0, 0, 1 },
+        .shape = floor_shape,
+        .motion_type = .static,
+        .object_layer = object_layers.non_moving,
+    }, .activate) catch unreachable;
+}
+
 // Enf of physics
 
 export fn init() void {
@@ -311,19 +329,7 @@ export fn init() void {
     {
         const body_interface = physics_system.getBodyInterfaceMut();
 
-        const floor_shape_settings = phy.BoxShapeSettings.create(.{100, 0, 100}) catch unreachable;
-        defer floor_shape_settings.asShapeSettings().release();
-
-        const floor_shape = floor_shape_settings.asShapeSettings().createShape() catch unreachable;
-        defer floor_shape.release();
-
-        _ = body_interface.createAndAddBody(.{
-            .position = .{0,0,0,0},
-            .rotation = .{0,0,0,1},
-            .shape = floor_shape,
-            .motion_type = .static,
-            .object_layer = object_layers.non_moving,
-        }, .activate) catch unreachable;
+        createBoxBody(body_interface, vec3.new(100, 1, 100), vec3.zero()) catch unreachable;
 
         physics_system.optimizeBroadPhase();
     }
