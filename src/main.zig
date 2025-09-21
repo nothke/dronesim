@@ -20,7 +20,7 @@ const state = struct {
     var pass_action: sg.PassAction = .{};
     var pip: sg.Pipeline = .{};
     var bind: sg.Bindings = .{};
-    const view: mat4 = mat4.lookat(.{ .x = 0.0, .y = 1.5, .z = 6.0 }, vec3.zero(), vec3.up());
+    var view: mat4 = mat4.identity();
 };
 
 const input_state = struct {
@@ -141,9 +141,8 @@ export fn init() void {
 export fn frame() void {
     const dt: f32 = @floatCast(sapp.frameDuration());
 
-    state.rx += 1.0 * dt;
+    //state.rx += 1.0 * dt;
     //state.ry += 2.0 * dt;
-    const vs_params = computeVsParams(state.rx, state.ry);
 
     const d = &state.drone;
 
@@ -156,11 +155,17 @@ export fn frame() void {
     const veloNorm = vec3.norm(d.velo);
     d.velo = vec3.add(d.velo, vec3.mul(veloNorm, -0.1));
 
-    if(state.drone.pos.y > 0) {
-        state.drone.pos.y = 0;
+    const groundY: f32 = -1.1;
+    
+    if(state.drone.pos.y > groundY) {
+        state.drone.pos.y = groundY;
         state.drone.velo.y *= -0.4;
         state.drone.velo.x *= 0.5;
     }
+
+    state.view = mat4.translate(state.drone.pos);
+
+    const vs_params = computeVsParams(state.rx, state.ry);
 
     sg.beginPass(.{ .action = state.pass_action, .swapchain = sglue.swapchain() });
     sg.applyPipeline(state.pip);
@@ -169,14 +174,6 @@ export fn frame() void {
     sg.draw(0, 36, 1);
     sg.endPass();
     sg.commit();
-}
-
-export fn cleanup() void {
-    sg.shutdown();
-}
-
-export fn event_cb() void {
-
 }
 
 // #INPUT
@@ -205,6 +202,10 @@ export fn input(event: ?*const sapp.Event) void {
     }
 }
 
+export fn cleanup() void {
+    sg.shutdown();
+}
+
 pub fn main() void {
     sapp.run(.{
         .init_cb = init,
@@ -224,10 +225,10 @@ fn computeVsParams(rx: f32, ry: f32) shd.VsParams {
     const rxm = mat4.rotate(rx, .{ .x = 1.0, .y = 0.0, .z = 0.0 });
     const rym = mat4.rotate(ry, .{ .x = 0.0, .y = 1.0, .z = 0.0 });
     
-    const tm = mat4.translate(state.drone.pos);
+    //const tm = mat4.translate(state.drone.pos);
     
-    var model = mat4.mul(rxm, rym);
-    model = mat4.mul(model, tm);
+    const model = mat4.mul(rxm, rym);
+    //model = mat4.mul(model, tm);
     const aspect = sapp.widthf() / sapp.heightf();
     const proj = mat4.persp(60.0, aspect, 0.01, 1000.0);
 
