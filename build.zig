@@ -6,6 +6,8 @@ pub fn build(b: *std.Build) void {
 
     const dep_sokol = b.dependency("sokol", .{ .target = target, .optimize = optimize });
 
+    const dep_zphysics = b.dependency("zphysics", .{});
+
     const exe = b.addExecutable(.{
         .name = "dronesim",
         .root_module = b.createModule(.{
@@ -17,9 +19,15 @@ pub fn build(b: *std.Build) void {
                     .name = "sokol",
                     .module = dep_sokol.module("sokol"),
                 },
+                .{
+                    .name = "zphysics",
+                    .module = dep_zphysics.module("root"),
+                },
             },
         }),
     });
+
+    exe.linkLibrary(dep_zphysics.artifact("joltc"));
 
     b.installArtifact(exe);
 

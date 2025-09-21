@@ -8,6 +8,10 @@
             .url = "git+https://github.com/floooh/sokol-zig.git#f54f1b00aa2b2421f06422bd35a0930ff0b17197",
             .hash = "sokol-0.1.0-pb1HKxdSLgC1cy3VKT18XqI35Yg_V5z7g090GkYtfBoV",
         },
+        .zphysics = .{
+            .url = "git+https://github.com/zig-gamedev/zphysics.git#87dbfd003e31623cede1137aa8a70f86619b5d5b",
+            .hash = "zphysics-0.2.0-dev-nZDEAOXUQgCrjn_iSZke7zpWwqRUe_BRlrzRrDdXXPEz",
+        },
     },
     .paths = .{
         "build.zig",

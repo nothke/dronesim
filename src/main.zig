@@ -7,6 +7,7 @@ const vec3 = @import("math.zig").Vec3;
 const mat4 = @import("math.zig").Mat4;
 const shd = @import("shaders/texcube.glsl.zig");
 const std = @import("std");
+const phy = @import("zphysics");
 
 const state = struct {
     const drone = struct {
@@ -35,6 +36,144 @@ const input_state = struct {
 
 // a vertex struct with position, color and uv-coords
 const Vertex = extern struct { x: f32, y: f32, z: f32, color: u32, u: i16, v: i16 };
+
+// Physics structs
+
+const object_layers = struct {
+    const non_moving: phy.ObjectLayer = 0;
+    const moving: phy.ObjectLayer = 1;
+    const len: u32 = 2;
+};
+
+const broad_phase_layers = struct {
+    const non_moving: phy.BroadPhaseLayer = 0;
+    const moving: phy.BroadPhaseLayer = 1;
+    const len: u32 = 2;
+};
+
+const BroadPhaseLayerInterface = extern struct {
+    broad_phase_layer_interface: phy.BroadPhaseLayerInterface = .init(@This()),
+    object_to_broad_phase: [object_layers.len]phy.BroadPhaseLayer = undefined,
+
+    fn init() BroadPhaseLayerInterface {
+        var object_to_broad_phase: [object_layers.len]phy.BroadPhaseLayer = undefined;
+        object_to_broad_phase[object_layers.non_moving] = broad_phase_layers.non_moving;
+        object_to_broad_phase[object_layers.moving] = broad_phase_layers.moving;
+        return .{ .object_to_broad_phase = object_to_broad_phase };
+    }
+
+    fn selfPtr(broad_phase_layer_interface: *phy.BroadPhaseLayerInterface) *BroadPhaseLayerInterface {
+        return @alignCast(@fieldParentPtr("broad_phase_layer_interface", broad_phase_layer_interface));
+    }
+
+    fn selfPtrConst(broad_phase_layer_interface: *const phy.BroadPhaseLayerInterface) *const BroadPhaseLayerInterface {
+        return @alignCast(@fieldParentPtr("broad_phase_layer_interface", broad_phase_layer_interface));
+    }
+
+    pub fn getNumBroadPhaseLayers(_: *const phy.BroadPhaseLayerInterface) callconv(.c) u32 {
+        return broad_phase_layers.len;
+    }
+
+    pub fn getBroadPhaseLayer(
+        broad_phase_layer_interface: *const phy.BroadPhaseLayerInterface,
+        layer: phy.ObjectLayer,
+    ) callconv(.c) phy.BroadPhaseLayer {
+        return selfPtrConst(broad_phase_layer_interface).object_to_broad_phase[layer];
+    }
+};
+
+const ObjectVsBroadPhaseLayerFilter = extern struct {
+    object_vs_broad_phase_layer_filter: phy.ObjectVsBroadPhaseLayerFilter = .init(@This()),
+
+    pub fn shouldCollide(
+        _: *const phy.ObjectVsBroadPhaseLayerFilter,
+        layer1: phy.ObjectLayer,
+        layer2: phy.BroadPhaseLayer,
+    ) callconv(.c) bool {
+        return switch (layer1) {
+            object_layers.non_moving => layer2 == broad_phase_layers.moving,
+            object_layers.moving => true,
+            else => unreachable,
+        };
+    }
+};
+
+const ObjectLayerPairFilter = extern struct {
+    object_layer_pair_filter: phy.ObjectLayerPairFilter = .init(@This()),
+
+    pub fn shouldCollide(
+        _: *const phy.ObjectLayerPairFilter,
+        object1: phy.ObjectLayer,
+        object2: phy.ObjectLayer,
+    ) callconv(.c) bool {
+        return switch (object1) {
+            object_layers.non_moving => object2 == object_layers.moving,
+            object_layers.moving => true,
+            else => unreachable,
+        };
+    }
+};
+
+const ContactListener = extern struct {
+    contact_listener: phy.ContactListener = .init(@This()),
+
+    fn selfPtr(contact_listener: *phy.ContactListener) *ContactListener {
+        return @alignCast(@fieldParentPtr("contact_listener", contact_listener));
+    }
+
+    fn selfPtrConst(contact_listener: *const phy.ContactListener) *const ContactListener {
+        return @alignCast(@fieldParentPtr("contact_listener", contact_listener));
+    }
+
+    pub fn onContactValidate(
+        contact_listener: *phy.ContactListener,
+        body1: *const phy.Body,
+        body2: *const phy.Body,
+        base_offset: *const [3]phy.Real,
+        collision_result: *const phy.CollideShapeResult,
+    ) callconv(.c) phy.ValidateResult {
+        _ = contact_listener;
+        _ = body1;
+        _ = body2;
+        _ = base_offset;
+        _ = collision_result;
+        return .accept_all_contacts;
+    }
+
+    pub fn onContactAdded(
+        contact_listener: *phy.ContactListener,
+        body1: *const phy.Body,
+        body2: *const phy.Body,
+        _: *const phy.ContactManifold,
+        _: *phy.ContactSettings,
+    ) callconv(.c) void {
+        _ = contact_listener;
+        _ = body1;
+        _ = body2;
+    }
+
+    pub fn onContactPersisted(
+        contact_listener: *phy.ContactListener,
+        body1: *const phy.Body,
+        body2: *const phy.Body,
+        _: *const phy.ContactManifold,
+        _: *phy.ContactSettings,
+    ) callconv(.c) void {
+        _ = contact_listener;
+        _ = body1;
+        _ = body2;
+    }
+
+    pub fn onContactRemoved(
+        contact_listener: *phy.ContactListener,
+        sub_shape_id_pair: *const phy.SubShapeIdPair,
+    ) callconv(.c) void {
+        _ = contact_listener;
+        _ = sub_shape_id_pair;
+    }
+};
+
+// Enf of physics
 
 export fn init() void {
     sg.setup(.{
@@ -139,6 +278,37 @@ export fn init() void {
         .load_action = .CLEAR,
         .clear_value = .{ .r = 0.25, .g = 0.5, .b = 0.75, .a = 1 },
     };
+
+    // physics
+    const alloc = std.heap.page_allocator;
+
+    try phy.init(alloc, .{});
+
+    const broadphase_layer_interface = alloc.create(BroadPhaseLayerInterface) catch unreachable;
+    broadphase_layer_interface.* = BroadPhaseLayerInterface.init();
+
+    const object_vs_broad_phase_layer_filter = alloc.create(ObjectVsBroadPhaseLayerFilter) catch unreachable;
+    object_vs_broad_phase_layer_filter.* = .{};
+
+    const object_layer_pair_filter = alloc.create(ObjectLayerPairFilter) catch unreachable;
+    object_layer_pair_filter.* = .{};
+
+    const contact_listener = alloc.create(ContactListener) catch unreachable;
+    contact_listener.* = .{};
+
+    const physics_system = phy.PhysicsSystem.create(
+        @as(*const phy.BroadPhaseLayerInterface, @ptrCast(broadphase_layer_interface)),
+        @as(*const phy.ObjectVsBroadPhaseLayerFilter, @ptrCast(object_vs_broad_phase_layer_filter)),
+        @as(*const phy.ObjectLayerPairFilter, @ptrCast(object_layer_pair_filter)),
+    .{
+        .max_bodies = 4,
+        .num_body_mutexes = 0,
+        .max_body_pairs = 1024,
+        .max_contact_constraints = 1024,
+    },
+    ) catch unreachable;
+
+    _ = physics_system;
 }
 
 fn rawInputAxis(positive: bool, negative: bool) f32 {
@@ -248,6 +418,7 @@ export fn input(event: ?*const sapp.Event) void {
 
 export fn cleanup() void {
     sg.shutdown();
+    phy.deinit();
 }
 
 pub fn main() void {
