@@ -347,6 +347,13 @@ fn rawInputAxis(positive: bool, negative: bool) f32 {
     return if (positive) 1 else (if (negative) -1 else 0);
 }
 
+fn drawCube(vp: *const mat4, pos: vec3) void {
+    const model = mat4.translate(pos);
+    const vs_params = shd.VsParams{ .mvp = vp.mul(model) };
+    sg.applyUniforms(shd.UB_vs_params, sg.asRange(&vs_params));
+    sg.draw(0, 36, 1);
+}
+
 export fn frame() void {
     const dt: f32 = @floatCast(sapp.frameDuration());
 
@@ -407,26 +414,26 @@ export fn frame() void {
 
     // drawing
 
-    const model = mat4.identity();
-
-    // projection
+    // camera projection
     const aspect = sapp.widthf() / sapp.heightf();
     const proj = mat4.persp(90.0, aspect, 0.01, 1000.0);
+
+    const vp = proj.mul(state.view);
     
     // vs params
-    const vs_params = shd.VsParams{ .mvp = proj.mul(state.view).mul(model) };
 
     // rendering
     sg.beginPass(.{ .action = state.pass_action, .swapchain = sglue.swapchain() });
     sg.applyPipeline(state.pip);
     sg.applyBindings(state.bind);
-    sg.applyUniforms(shd.UB_vs_params, sg.asRange(&vs_params));
-    sg.draw(0, 36, 1);
 
-    const model2 = mat4.translate(vec3.new(110, 0, 0));
-    const vs_params_2 = shd.VsParams{ .mvp = mat4.mul(mat4.mul(proj, state.view), model2) };
-    sg.applyUniforms(shd.UB_vs_params, sg.asRange(&vs_params_2));
-    sg.draw(0, 36, 1);
+    drawCube(&vp, vec3.zero());
+    drawCube(&vp, vec3.new(220, 0, 0));
+    drawCube(&vp, vec3.new(0, 0, 220));
+
+    for (0..10) |x| {
+
+    }
 
     sg.endPass();
     sg.commit();
