@@ -9,12 +9,6 @@ const shd = @import("shaders/texcube.glsl.zig");
 const std = @import("std");
 const phy = @import("zphysics");
 
-const WorldCube = struct {
-    pos: vec3,
-    size: vec3,
-    bodyId: phy.BodyId,
-};
-
 const state = struct {
     const drone = struct {
         var pos: vec3 = vec3.zero();
@@ -33,6 +27,12 @@ const state = struct {
 
     var cubesBuffer: [64]WorldCube = undefined;
     var cubes: std.ArrayListUnmanaged(WorldCube) = .{};
+};
+
+const WorldCube = struct {
+    pos: vec3,
+    size: vec3,
+    bodyId: phy.BodyId,
 };
 
 const input_state = struct {
@@ -367,6 +367,7 @@ fn rawInputAxis(positive: bool, negative: bool) f32 {
 }
 
 fn drawCube(vp: *const mat4, pos: vec3, size: vec3) void {
+    // TODO: Move to math
     const scale = mat4{.m = .{
         .{size.x,0,0,0}, 
         .{0,size.y,0,0}, 
@@ -405,9 +406,9 @@ export fn frame() void {
         {
             const upForce = vec3.mul(dUp, yAccel * 20000);
             body.addForce(upForce.asArr());
-            body.addTorque(.{1000 * pitchAccel, -1000 * yawAccel, -1000 * rollAccel});
+            body.addTorque(.{2000 * pitchAccel, -1500 * yawAccel, -2000 * rollAccel});
 
-            body.applyBuoyancyImpulse(.{0,100,0}, .{0,1,0}, 0, 100, 1, .{0,0,0}, .{0,-9.81,0}, dt);
+            body.applyBuoyancyImpulse(.{0,100,0}, .{0,1,0}, 0, 100, 0.5, .{0,0,0}, .{0,-9.81,0}, dt);
         }
     }
 
@@ -444,7 +445,7 @@ export fn frame() void {
 
     // camera projection
     const aspect = sapp.widthf() / sapp.heightf();
-    const proj = mat4.persp(90.0, aspect, 0.01, 1000.0);
+    const proj = mat4.persp(110.0, aspect, 0.01, 1000.0);
 
     const vp = proj.mul(state.view);
     
@@ -515,6 +516,7 @@ pub fn main() void {
         .event_cb = input,
         .width = 800,
         .height = 600,
+        .fullscreen = true,
         .sample_count = 4,
         .icon = .{ .sokol_default = true },
         .window_title = "texcube.zig",
