@@ -15,6 +15,8 @@ const state = struct {
     const drone = struct {
         var pos: vec3 = vec3.zero();
         var velo: vec3 = vec3.zero();
+
+        var angVeloX: f32 = 0;
         var rotX: f32 = 0;
     };
 
@@ -153,7 +155,8 @@ export fn frame() void {
     d.velo.x += if(input_state.leftPressed) 1 else (if (input_state.rightPressed) -1 else 0);
     const rotXAccel: f32 = if (input_state.pitchDownPressed) 1 else (if (input_state.pitchUpPressed) -1 else 0);
 
-    d.rotX += rotXAccel * dt * 10;
+    d.angVeloX += rotXAccel * dt * 100;
+    d.rotX += d.angVeloX * dt;
 
     d.pos = vec3.add(d.pos, vec3.mul(d.velo, dt));
     d.velo.y += 9.81 * dt;
@@ -170,9 +173,10 @@ export fn frame() void {
     }
 
     {
-        const v = &state.view;
-        v.* = mat4.translate(d.pos);
-        v.* = mat4.mul(v.*, mat4.rotate(d.rotX, vec3.right()));
+        var v = mat4.identity();
+        v = mat4.mul(v, mat4.rotate(d.rotX, vec3.right()));
+        v = mat4.mul(v, mat4.translate(d.pos));
+        state.view = v;
     }
 
     const vs_params = computeVsParams(state.rx, state.ry);
