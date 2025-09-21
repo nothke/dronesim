@@ -23,6 +23,7 @@ const state = struct {
     var view: mat4 = mat4.identity();
 
     var physics_system: *phy.PhysicsSystem = undefined;
+    var droneBodyId: phy.BodyId = undefined;
 };
 
 const input_state = struct {
@@ -179,19 +180,20 @@ const ContactListener = extern struct {
 
 // Nothkes physics
 
-fn createBoxBody(body_interface: *phy.BodyInterface, size: vec3, pos: vec3, moving: bool) !void {
+fn createBoxBody(body_interface: *phy.BodyInterface, size: vec3, pos: vec3, moving: bool) !phy.BodyId {
     const floor_shape_settings = try phy.BoxShapeSettings.create(.{ size.x, size.y, size.z });
     defer floor_shape_settings.asShapeSettings().release();
 
     const floor_shape = try floor_shape_settings.asShapeSettings().createShape();
     defer floor_shape.release();
 
-    _ = try body_interface.createAndAddBody(.{
+    return try body_interface.createAndAddBody(.{
         .position = .{ pos.x, pos.y, pos.z, 0 },
         .rotation = .{ 0, 0, 0, 1 },
         .shape = floor_shape,
         .motion_type = if (moving) .dynamic else .static,
         .object_layer = if (moving) object_layers.moving else object_layers.non_moving,
+        .allow_sleeping = false,
     }, .activate);
 }
 
@@ -333,10 +335,10 @@ export fn init() void {
     {
         const body_interface = state.physics_system.getBodyInterfaceMut();
 
-        createBoxBody(body_interface, vec3.new(100, 1, 100), vec3.zero(), false) catch unreachable;
+        _ = createBoxBody(body_interface, vec3.new(100, 1, 100), vec3.zero(), false) catch unreachable;
 
-        createBoxBody(body_interface, vec3.new(0.5, 0.5, 0.5), vec3.new(0, 10, 0), true) catch unreachable;
-
+        state.droneBodyId = createBoxBody(body_interface, vec3.new(0.5, 0.5, 0.5), vec3.new(0, 10, 0), true) catch unreachable;
+        
         state.physics_system.optimizeBroadPhase();
     }
 }
@@ -369,6 +371,8 @@ export fn frame() void {
             const upForce = vec3.mul(dUp, yAccel * 20000);
             body.addForce(upForce.asArr());
             body.addTorque(.{1000 * pitchAccel, -1000 * yawAccel, -1000 * rollAccel});
+
+            body.applyBuoyancyImpulse(.{0,100,0}, .{0,1,0}, 0, 100, 1, .{0,0,0}, .{0,-9.81,0}, dt);
         }
     }
 
