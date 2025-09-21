@@ -346,33 +346,33 @@ fn rawInputAxis(positive: bool, negative: bool) f32 {
 export fn frame() void {
     const dt: f32 = @floatCast(sapp.frameDuration());
 
-    const dUp = vec3.new(state.view.m[0][1], state.view.m[1][1], state.view.m[2][1]);
+    // const dUp = vec3.new(state.view.m[0][1], state.view.m[1][1], state.view.m[2][1]);
     //const dRight = vec3.new(state.view.m[0][0], state.view.m[1][0], state.view.m[2][0]);
     //const dForward = vec3.new(state.view.m[0][2], state.view.m[1][2], state.view.m[2][2]);
 
-    const d = &state.drone;
+    // const d = &state.drone;
 
     const yAccel: f32 = rawInputAxis(input_state.upPressed, false);
     const xAccel: f32 = rawInputAxis(input_state.leftPressed, input_state.rightPressed);
     const pitchAccel: f32 = rawInputAxis(input_state.pitchDownPressed, input_state.pitchUpPressed);
     const rollAccel: f32 = rawInputAxis(input_state.rollLeftPressed, input_state.rollRightPressed);
 
-    d.velo = vec3.add(d.velo, vec3.mul(dUp, -yAccel));
-    d.velo.x += xAccel;
+    // d.velo = vec3.add(d.velo, vec3.mul(dUp, -yAccel));
+    // d.velo.x += xAccel;
 
-    d.angVelo.x += pitchAccel * dt * 1000;
-    d.angVelo.z += -rollAccel * dt * 1000;
+    // d.angVelo.x += pitchAccel * dt * 1000;
+    // d.angVelo.z += -rollAccel * dt * 1000;
 
-    d.angVelo = vec3.mul(d.angVelo, 0.95);
+    // d.angVelo = vec3.mul(d.angVelo, 0.95);
 
-    d.rot.x += d.angVelo.x * dt;
-    d.rot.z += d.angVelo.z * dt;
+    // d.rot.x += d.angVelo.x * dt;
+    // d.rot.z += d.angVelo.z * dt;
 
-    d.pos = vec3.add(d.pos, vec3.mul(d.velo, dt));
-    d.velo.y += 9.81 * dt;
+    // d.pos = vec3.add(d.pos, vec3.mul(d.velo, dt));
+    // d.velo.y += 9.81 * dt;
 
-    const veloNorm = vec3.norm(d.velo);
-    d.velo = vec3.add(d.velo, vec3.mul(veloNorm, -0.1));
+    // const veloNorm = vec3.norm(d.velo);
+    // d.velo = vec3.add(d.velo, vec3.mul(veloNorm, -0.1));
 
     const groundY: f32 = -1.1;
     
@@ -383,15 +383,42 @@ export fn frame() void {
     }
 
     // physics
+
+    const mutBodies = state.physics_system.getBodiesMutUnsafe();
+
+    for (mutBodies) |body| {
+        if (!phy.isValidBodyPointer(body) or body.motion_properties == null) continue;
+
+        if (body.motion_type == .dynamic)
+        {
+            body.addForce(.{100000 * xAccel, 100000 * yAccel, 0});
+            body.addTorque(.{1000 * pitchAccel, 0, 1000 * rollAccel});
+        }
+    }
+
     const bodies = state.physics_system.getBodiesUnsafe();
+
     for (bodies) |body| {
         if (!phy.isValidBodyPointer(body) or body.motion_properties == null) continue;
 
         if(body.motion_type == .dynamic) {
-
             var v = mat4.identity();
             const dpos = body.getWorldTransform().position;
-            v = v.mul(mat4.translate(vec3.new(dpos[0], dpos[1], dpos[2])));
+            
+            const r = body.getWorldTransform().rotation;
+            const rotMat = mat4{.m = .{
+                .{r[0], r[1], r[2], 0},
+                .{r[3], r[4], r[5], 0},
+                .{r[6], r[7], r[8], 0},
+                .{0,0,0,1},
+                }};
+
+            // _ = rotMat;
+
+            v = v.mul(rotMat);
+            v = v.mul(mat4.translate(vec3.new(dpos[0], dpos[1], dpos[2]).mul(-1)));
+
+
             state.view = v;
         }
     }
