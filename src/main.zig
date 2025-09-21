@@ -15,6 +15,7 @@ const state = struct {
     const drone = struct {
         var pos: vec3 = vec3.zero();
         var velo: vec3 = vec3.zero();
+        var rotX: f32 = 0;
     };
 
     var pass_action: sg.PassAction = .{};
@@ -28,6 +29,8 @@ const input_state = struct {
     var downPressed: bool = false;
     var leftPressed: bool = false;
     var rightPressed: bool = false;
+    var pitchUpPressed: bool = false;
+    var pitchDownPressed: bool = false;
 };
 
 // a vertex struct with position, color and uv-coords
@@ -146,11 +149,14 @@ export fn frame() void {
 
     const d = &state.drone;
 
-    state.drone.velo.y -= if (input_state.upPressed) 1 else 0;
-    state.drone.velo.x += if(input_state.leftPressed) 1 else (if (input_state.rightPressed) -1 else 0);
+    d.velo.y -= if (input_state.upPressed) 1 else 0;
+    d.velo.x += if(input_state.leftPressed) 1 else (if (input_state.rightPressed) -1 else 0);
+    const rotXAccel: f32 = if (input_state.pitchDownPressed) 1 else (if (input_state.pitchUpPressed) -1 else 0);
 
-    state.drone.pos = vec3.add(state.drone.pos, vec3.mul(state.drone.velo, dt));
-    state.drone.velo.y += 9.81 * dt;
+    d.rotX += rotXAccel * dt * 10;
+
+    d.pos = vec3.add(d.pos, vec3.mul(d.velo, dt));
+    d.velo.y += 9.81 * dt;
 
     const veloNorm = vec3.norm(d.velo);
     d.velo = vec3.add(d.velo, vec3.mul(veloNorm, -0.1));
@@ -163,7 +169,11 @@ export fn frame() void {
         state.drone.velo.x *= 0.5;
     }
 
-    state.view = mat4.translate(state.drone.pos);
+    {
+        const v = &state.view;
+        v.* = mat4.translate(d.pos);
+        v.* = mat4.mul(v.*, mat4.rotate(d.rotX, vec3.right()));
+    }
 
     const vs_params = computeVsParams(state.rx, state.ry);
 
@@ -179,13 +189,15 @@ export fn frame() void {
 // #INPUT
 export fn input(event: ?*const sapp.Event) void {
     const ev = event.?;
+
     if (ev.type == .KEY_DOWN) {
         switch (ev.key_code) {
             .W => input_state.upPressed = true,
             .S =>  input_state.downPressed = true,
             .A => input_state.leftPressed = true,
             .D => input_state.rightPressed = true,
-            .SPACE => std.log.info("LOGGG", .{}),
+            .UP => input_state.pitchDownPressed = true,
+            .DOWN => input_state.pitchUpPressed = true,
             else => {},
         }
     }
@@ -196,7 +208,8 @@ export fn input(event: ?*const sapp.Event) void {
             .S =>  input_state.upPressed = false,
             .A => input_state.leftPressed = false,
             .D => input_state.rightPressed = false,
-            .SPACE => std.log.info("LOGGG", .{}),
+            .UP => input_state.pitchDownPressed = false,
+            .DOWN => input_state.pitchUpPressed = false,
             else => {},
         }
     }
@@ -230,7 +243,7 @@ fn computeVsParams(rx: f32, ry: f32) shd.VsParams {
     const model = mat4.mul(rxm, rym);
     //model = mat4.mul(model, tm);
     const aspect = sapp.widthf() / sapp.heightf();
-    const proj = mat4.persp(60.0, aspect, 0.01, 1000.0);
+    const proj = mat4.persp(90.0, aspect, 0.01, 1000.0);
 
 
 

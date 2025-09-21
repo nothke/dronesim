@@ -43,16 +43,24 @@ pub const Vec3 = extern struct {
         return Vec3{ .x = 0.0, .y = 1.0, .z = 0.0 };
     }
 
+    pub fn right() Vec3 {
+        return Vec3{ .x = 1.0, .y = 0.0, .z = 0.0 };
+    }
+
+    pub fn forward() Vec3 {
+        return Vec3{ .x = 0.0, .y = 0.0, .z = 1.0 };
+    }
+
     pub fn len(v: Vec3) f32 {
         return math.sqrt(Vec3.dot(v, v));
     }
 
-    pub fn add(left: Vec3, right: Vec3) Vec3 {
-        return Vec3{ .x = left.x + right.x, .y = left.y + right.y, .z = left.z + right.z };
+    pub fn add(left: Vec3, r: Vec3) Vec3 {
+        return Vec3{ .x = left.x + r.x, .y = left.y + r.y, .z = left.z + r.z };
     }
 
-    pub fn sub(left: Vec3, right: Vec3) Vec3 {
-        return Vec3{ .x = left.x - right.x, .y = left.y - right.y, .z = left.z - right.z };
+    pub fn sub(left: Vec3, r: Vec3) Vec3 {
+        return Vec3{ .x = left.x - r.x, .y = left.y - r.y, .z = left.z - r.z };
     }
 
     pub fn mul(v: Vec3, s: f32) Vec3 {
