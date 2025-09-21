@@ -197,7 +197,7 @@ fn createBoxBody(body_interface: *phy.BodyInterface, size: vec3, pos: vec3, movi
     }, .activate);
 }
 
-// Enf of physics
+// End of physics
 
 export fn init() void {
     sg.setup(.{
@@ -338,7 +338,7 @@ export fn init() void {
         _ = createBoxBody(body_interface, vec3.new(100, 1, 100), vec3.zero(), false) catch unreachable;
 
         state.droneBodyId = createBoxBody(body_interface, vec3.new(0.5, 0.5, 0.5), vec3.new(0, 10, 0), true) catch unreachable;
-        
+
         state.physics_system.optimizeBroadPhase();
     }
 }
@@ -414,7 +414,7 @@ export fn frame() void {
     const proj = mat4.persp(90.0, aspect, 0.01, 1000.0);
     
     // vs params
-    const vs_params = shd.VsParams{ .mvp = mat4.mul(mat4.mul(proj, state.view), model) };
+    const vs_params = shd.VsParams{ .mvp = proj.mul(state.view).mul(model) };
 
     // rendering
     sg.beginPass(.{ .action = state.pass_action, .swapchain = sglue.swapchain() });
@@ -422,6 +422,12 @@ export fn frame() void {
     sg.applyBindings(state.bind);
     sg.applyUniforms(shd.UB_vs_params, sg.asRange(&vs_params));
     sg.draw(0, 36, 1);
+
+    const model2 = mat4.translate(vec3.new(110, 0, 0));
+    const vs_params_2 = shd.VsParams{ .mvp = mat4.mul(mat4.mul(proj, state.view), model2) };
+    sg.applyUniforms(shd.UB_vs_params, sg.asRange(&vs_params_2));
+    sg.draw(0, 36, 1);
+
     sg.endPass();
     sg.commit();
 }
