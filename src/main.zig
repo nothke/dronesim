@@ -34,6 +34,8 @@ const input_state = struct {
     var pitchDownPressed: bool = false;
     var rollRightPressed: bool = false;
     var rollLeftPressed: bool = false;
+    var yawRightPressed: bool = false;
+    var yawLeftPressed: bool = false;
 };
 
 // a vertex struct with position, color and uv-coords
@@ -356,6 +358,7 @@ export fn frame() void {
     //const xAccel: f32 = rawInputAxis(input_state.leftPressed, input_state.rightPressed);
     const pitchAccel: f32 = rawInputAxis(input_state.pitchDownPressed, input_state.pitchUpPressed);
     const rollAccel: f32 = rawInputAxis(input_state.rollLeftPressed, input_state.rollRightPressed);
+    const yawAccel: f32 = rawInputAxis(input_state.yawLeftPressed, input_state.yawRightPressed);
 
     // d.velo = vec3.add(d.velo, vec3.mul(dUp, -yAccel));
     // d.velo.x += xAccel;
@@ -393,7 +396,7 @@ export fn frame() void {
         {
             const upForce = vec3.mul(dUp, yAccel * 20000);
             body.addForce(upForce.asArr());
-            body.addTorque(.{1000 * pitchAccel, 0, -1000 * rollAccel});
+            body.addTorque(.{1000 * pitchAccel, -1000 * yawAccel, -1000 * rollAccel});
         }
     }
 
@@ -463,13 +466,16 @@ export fn input(event: ?*const sapp.Event) void {
         switch (ev.key_code) {
             .W => input_state.upPressed = true,
             .S =>  input_state.downPressed = true,
-            .A => input_state.leftPressed = true,
-            .D => input_state.rightPressed = true,
+            // .A => input_state.leftPressed = true,
+            // .D => input_state.rightPressed = true,
             .UP => input_state.pitchDownPressed = true,
             .DOWN => input_state.pitchUpPressed = true,
 
             .LEFT => input_state.rollLeftPressed = true,
             .RIGHT => input_state.rollRightPressed = true,
+
+            .A => input_state.yawLeftPressed = true,
+            .D => input_state.yawRightPressed = true,
             else => {},
         }
     }
@@ -478,13 +484,16 @@ export fn input(event: ?*const sapp.Event) void {
         switch (ev.key_code) {
             .W => input_state.upPressed = false,
             .S =>  input_state.upPressed = false,
-            .A => input_state.leftPressed = false,
-            .D => input_state.rightPressed = false,
+            // .A => input_state.leftPressed = false,
+            // .D => input_state.rightPressed = false,
             .UP => input_state.pitchDownPressed = false,
             .DOWN => input_state.pitchUpPressed = false,
 
             .LEFT => input_state.rollLeftPressed = false,
             .RIGHT => input_state.rollRightPressed = false,
+
+            .A => input_state.yawLeftPressed = false,
+            .D => input_state.yawRightPressed = false,
             else => {},
         }
     }
