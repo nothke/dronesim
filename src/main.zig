@@ -428,8 +428,15 @@ export fn frame() void {
     sg.applyBindings(state.bind);
 
     drawCube(&vp, vec3.zero());
-    drawCube(&vp, vec3.new(220, 0, 0));
     drawCube(&vp, vec3.new(0, 0, 220));
+
+    for (0..10) |x| {
+        for (0..10) |y| {
+            const xf: f32 = @floatFromInt(x);
+            const yf: f32 = @floatFromInt(y);
+            drawCube(&vp, vec3.new(xf * 220, 0, yf * 220));
+        }
+    }
 
     sg.endPass();
     sg.commit();
