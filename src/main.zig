@@ -219,7 +219,7 @@ export fn init() void {
         .logger = .{ .func = slog.func },
     });
 
-    const cs: f32 = 100;
+    const cs: f32 = 1;
 
     state.bind.vertex_buffers[0] = sg.makeBuffer(.{
         .data = sg.asRange(&[_]Vertex{
@@ -339,7 +339,7 @@ export fn init() void {
         @as(*const phy.ObjectVsBroadPhaseLayerFilter, @ptrCast(object_vs_broad_phase_layer_filter)),
         @as(*const phy.ObjectLayerPairFilter, @ptrCast(object_layer_pair_filter)),
     .{
-        .max_bodies = 4,
+        .max_bodies = 1024,
         .num_body_mutexes = 0,
         .max_body_pairs = 1024,
         .max_contact_constraints = 1024,
@@ -355,16 +355,29 @@ export fn init() void {
     state.cubes = std.ArrayListUnmanaged(WorldCube).initBuffer(&state.cubesBuffer);
 
     createBox(body_interface, vec3.zero(), vec3.new(100, 1, 100));
-    createBox(body_interface, vec3.new(0, 0, 10), vec3.new(1, 10, 1));
+    createBox(body_interface, vec3.new(0, 5, 10), vec3.new(1, 10, 1));
+    createBox(body_interface, vec3.new(0, 5, -10), vec3.new(1, 10, 1));
+    createBox(body_interface, vec3.new(5, 5, -20), vec3.new(1, 10, 1));
+    createBox(body_interface, vec3.new(-5, 5, -30), vec3.new(1, 10, 1));
+
 }
 
 fn rawInputAxis(positive: bool, negative: bool) f32 {
     return if (positive) 1 else (if (negative) -1 else 0);
 }
 
-fn drawCube(vp: *const mat4, pos: vec3) void {
-    const model = mat4.translate(pos);
+fn drawCube(vp: *const mat4, pos: vec3, size: vec3) void {
+    const scale = mat4{.m = .{
+        .{size.x,0,0,0}, 
+        .{0,size.y,0,0}, 
+        .{0,0,size.z,0},
+        .{0,0,0,1},
+    }};
+
+    const model = mat4.translate(pos).mul(scale);
+
     const vs_params = shd.VsParams{ .mvp = vp.mul(model) };
+
     sg.applyUniforms(shd.UB_vs_params, sg.asRange(&vs_params));
     sg.draw(0, 36, 1);
 }
@@ -443,7 +456,7 @@ export fn frame() void {
     sg.applyBindings(state.bind);
 
     for (state.cubes.items) |cube| {
-        drawCube(&vp, cube.pos);
+        drawCube(&vp, cube.pos, cube.size);
     }
 
     sg.endPass();
