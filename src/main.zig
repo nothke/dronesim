@@ -12,9 +12,8 @@ const state = struct {
     const drone = struct {
         var pos: vec3 = vec3.zero();
         var velo: vec3 = vec3.zero();
-
-        var angVeloX: f32 = 0;
-        var rotX: f32 = 0;
+        var angVelo: vec3 = vec3.zero(); // pitch, yaw, roll
+        var rot: vec3 = vec3.zero();
     };
 
     var pass_action: sg.PassAction = .{};
@@ -30,6 +29,8 @@ const input_state = struct {
     var rightPressed: bool = false;
     var pitchUpPressed: bool = false;
     var pitchDownPressed: bool = false;
+    var rollRightPressed: bool = false;
+    var rollLeftPressed: bool = false;
 };
 
 // a vertex struct with position, color and uv-coords
@@ -148,19 +149,26 @@ export fn frame() void {
     const dt: f32 = @floatCast(sapp.frameDuration());
 
     const dUp = vec3.new(state.view.m[0][1], state.view.m[1][1], state.view.m[2][1]);
-
+    const dRight = vec3.new(state.view.m[0][0], state.view.m[1][0], state.view.m[2][0]);
+    const dForward = vec3.new(state.view.m[0][2], state.view.m[1][2], state.view.m[2][2]);
 
     const d = &state.drone;
 
     const yAccel: f32 = rawInputAxis(input_state.upPressed, false);
     const xAccel: f32 = rawInputAxis(input_state.leftPressed, input_state.rightPressed);
-    const rotXAccel: f32 = rawInputAxis(input_state.pitchDownPressed, input_state.pitchUpPressed);
+    const pitchAccel: f32 = rawInputAxis(input_state.pitchDownPressed, input_state.pitchUpPressed);
+    const rollAccel: f32 = rawInputAxis(input_state.rollLeftPressed, input_state.rollRightPressed);
 
     d.velo = vec3.add(d.velo, vec3.mul(dUp, -yAccel));
     d.velo.x += xAccel;
 
-    d.angVeloX += rotXAccel * dt * 100;
-    d.rotX += d.angVeloX * dt;
+    d.angVelo.x += pitchAccel * dt * 1000;
+    d.angVelo.z += -rollAccel * dt * 1000;
+
+    d.angVelo = vec3.mul(d.angVelo, 0.95);
+
+    d.rot.x += d.angVelo.x * dt;
+    d.rot.z += d.angVelo.z * dt;
 
     d.pos = vec3.add(d.pos, vec3.mul(d.velo, dt));
     d.velo.y += 9.81 * dt;
@@ -178,7 +186,8 @@ export fn frame() void {
 
     {
         var v = mat4.identity();
-        v = mat4.mul(v, mat4.rotate(d.rotX, vec3.right()));
+        v = mat4.mul(v, mat4.rotate(d.rot.x, dRight));
+        v = mat4.mul(v, mat4.rotate(d.rot.z, dForward));
         v = mat4.mul(v, mat4.translate(d.pos));
         state.view = v;
     }
@@ -214,6 +223,9 @@ export fn input(event: ?*const sapp.Event) void {
             .D => input_state.rightPressed = true,
             .UP => input_state.pitchDownPressed = true,
             .DOWN => input_state.pitchUpPressed = true,
+
+            .LEFT => input_state.rollLeftPressed = true,
+            .RIGHT => input_state.rollRightPressed = true,
             else => {},
         }
     }
@@ -226,6 +238,9 @@ export fn input(event: ?*const sapp.Event) void {
             .D => input_state.rightPressed = false,
             .UP => input_state.pitchDownPressed = false,
             .DOWN => input_state.pitchUpPressed = false,
+
+            .LEFT => input_state.rollLeftPressed = false,
+            .RIGHT => input_state.rollRightPressed = false,
             else => {},
         }
     }
