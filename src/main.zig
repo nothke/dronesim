@@ -9,6 +9,12 @@ const shd = @import("shaders/texcube.glsl.zig");
 const std = @import("std");
 const phy = @import("zphysics");
 
+const WorldCube = struct {
+    pos: vec3,
+    size: vec3,
+    bodyId: phy.BodyId,
+};
+
 const state = struct {
     const drone = struct {
         var pos: vec3 = vec3.zero();
@@ -24,6 +30,9 @@ const state = struct {
 
     var physics_system: *phy.PhysicsSystem = undefined;
     var droneBodyId: phy.BodyId = undefined;
+
+    var cubesBuffer: [64]WorldCube = undefined;
+    var cubes: std.ArrayListUnmanaged(WorldCube) = .{};
 };
 
 const input_state = struct {
@@ -199,6 +208,11 @@ fn createBoxBody(body_interface: *phy.BodyInterface, size: vec3, pos: vec3, movi
 
 // End of physics
 
+fn createBox(body_interface: *phy.BodyInterface, pos: vec3, size: vec3) void {
+    const bodyId = createBoxBody(body_interface, size, pos, false) catch unreachable;
+    state.cubes.appendAssumeCapacity(.{ .pos = pos, .size = size, .bodyId = bodyId });
+}
+
 export fn init() void {
     sg.setup(.{
         .environment = sglue.environment(),
@@ -332,15 +346,16 @@ export fn init() void {
     },
     ) catch unreachable;
 
-    {
-        const body_interface = state.physics_system.getBodyInterfaceMut();
+    const body_interface = state.physics_system.getBodyInterfaceMut();
 
-        _ = createBoxBody(body_interface, vec3.new(100, 1, 100), vec3.zero(), false) catch unreachable;
+    state.droneBodyId = createBoxBody(body_interface, vec3.new(0.5, 0.5, 0.5), vec3.new(0, 10, 0), true) catch unreachable;
 
-        state.droneBodyId = createBoxBody(body_interface, vec3.new(0.5, 0.5, 0.5), vec3.new(0, 10, 0), true) catch unreachable;
+    state.physics_system.optimizeBroadPhase();
 
-        state.physics_system.optimizeBroadPhase();
-    }
+    state.cubes = std.ArrayListUnmanaged(WorldCube).initBuffer(&state.cubesBuffer);
+
+    createBox(body_interface, vec3.zero(), vec3.new(100, 1, 100));
+    createBox(body_interface, vec3.new(0, 0, 10), vec3.new(1, 10, 1));
 }
 
 fn rawInputAxis(positive: bool, negative: bool) f32 {
@@ -427,15 +442,8 @@ export fn frame() void {
     sg.applyPipeline(state.pip);
     sg.applyBindings(state.bind);
 
-    drawCube(&vp, vec3.zero());
-    drawCube(&vp, vec3.new(0, 0, 220));
-
-    for (0..10) |x| {
-        for (0..10) |y| {
-            const xf: f32 = @floatFromInt(x);
-            const yf: f32 = @floatFromInt(y);
-            drawCube(&vp, vec3.new(xf * 220, 0, yf * 220));
-        }
+    for (state.cubes.items) |cube| {
+        drawCube(&vp, cube.pos);
     }
 
     sg.endPass();
