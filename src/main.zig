@@ -201,7 +201,7 @@ export fn init() void {
         .logger = .{ .func = slog.func },
     });
 
-    const cs: f32 = 30;
+    const cs: f32 = 100;
 
     state.bind.vertex_buffers[0] = sg.makeBuffer(.{
         .data = sg.asRange(&[_]Vertex{
@@ -346,14 +346,14 @@ fn rawInputAxis(positive: bool, negative: bool) f32 {
 export fn frame() void {
     const dt: f32 = @floatCast(sapp.frameDuration());
 
-    // const dUp = vec3.new(state.view.m[0][1], state.view.m[1][1], state.view.m[2][1]);
+    const dUp = vec3.new(state.view.m[0][1], state.view.m[1][1], state.view.m[2][1]);
     //const dRight = vec3.new(state.view.m[0][0], state.view.m[1][0], state.view.m[2][0]);
     //const dForward = vec3.new(state.view.m[0][2], state.view.m[1][2], state.view.m[2][2]);
 
     // const d = &state.drone;
 
     const yAccel: f32 = rawInputAxis(input_state.upPressed, false);
-    const xAccel: f32 = rawInputAxis(input_state.leftPressed, input_state.rightPressed);
+    //const xAccel: f32 = rawInputAxis(input_state.leftPressed, input_state.rightPressed);
     const pitchAccel: f32 = rawInputAxis(input_state.pitchDownPressed, input_state.pitchUpPressed);
     const rollAccel: f32 = rawInputAxis(input_state.rollLeftPressed, input_state.rollRightPressed);
 
@@ -391,8 +391,9 @@ export fn frame() void {
 
         if (body.motion_type == .dynamic)
         {
-            body.addForce(.{100000 * xAccel, 100000 * yAccel, 0});
-            body.addTorque(.{1000 * pitchAccel, 0, 1000 * rollAccel});
+            const upForce = vec3.mul(dUp, yAccel * 20000);
+            body.addForce(upForce.asArr());
+            body.addTorque(.{1000 * pitchAccel, 0, -1000 * rollAccel});
         }
     }
 
