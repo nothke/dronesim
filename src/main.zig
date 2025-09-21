@@ -352,38 +352,10 @@ export fn frame() void {
     //const dRight = vec3.new(state.view.m[0][0], state.view.m[1][0], state.view.m[2][0]);
     //const dForward = vec3.new(state.view.m[0][2], state.view.m[1][2], state.view.m[2][2]);
 
-    // const d = &state.drone;
-
     const yAccel: f32 = rawInputAxis(input_state.upPressed, false);
-    //const xAccel: f32 = rawInputAxis(input_state.leftPressed, input_state.rightPressed);
     const pitchAccel: f32 = rawInputAxis(input_state.pitchDownPressed, input_state.pitchUpPressed);
     const rollAccel: f32 = rawInputAxis(input_state.rollLeftPressed, input_state.rollRightPressed);
     const yawAccel: f32 = rawInputAxis(input_state.yawLeftPressed, input_state.yawRightPressed);
-
-    // d.velo = vec3.add(d.velo, vec3.mul(dUp, -yAccel));
-    // d.velo.x += xAccel;
-
-    // d.angVelo.x += pitchAccel * dt * 1000;
-    // d.angVelo.z += -rollAccel * dt * 1000;
-
-    // d.angVelo = vec3.mul(d.angVelo, 0.95);
-
-    // d.rot.x += d.angVelo.x * dt;
-    // d.rot.z += d.angVelo.z * dt;
-
-    // d.pos = vec3.add(d.pos, vec3.mul(d.velo, dt));
-    // d.velo.y += 9.81 * dt;
-
-    // const veloNorm = vec3.norm(d.velo);
-    // d.velo = vec3.add(d.velo, vec3.mul(veloNorm, -0.1));
-
-    const groundY: f32 = -1.1;
-    
-    if(state.drone.pos.y > groundY) {
-        state.drone.pos.y = groundY;
-        state.drone.velo.y *= -0.4;
-        state.drone.velo.x *= 0.5;
-    }
 
     // physics
 
@@ -410,14 +382,14 @@ export fn frame() void {
             const dpos = body.getWorldTransform().position;
             
             const r = body.getWorldTransform().rotation;
+
+            // TODO: Move to mat4
             const rotMat = mat4{.m = .{
                 .{r[0], r[1], r[2], 0},
                 .{r[3], r[4], r[5], 0},
                 .{r[6], r[7], r[8], 0},
                 .{0,0,0,1},
                 }};
-
-            // _ = rotMat;
 
             v = v.mul(rotMat);
             v = v.mul(mat4.translate(vec3.new(dpos[0], dpos[1], dpos[2]).mul(-1)));
@@ -430,14 +402,6 @@ export fn frame() void {
     state.physics_system.update(dt, .{}) catch unreachable;
 
     // drawing
-
-    {
-        // var v = mat4.identity();
-        // v = mat4.mul(v, mat4.rotate(d.rot.x, dRight));
-        // v = mat4.mul(v, mat4.rotate(d.rot.z, dForward));
-        // v = mat4.mul(v, mat4.translate(d.pos));
-        // state.view = v;
-    }
 
     const model = mat4.identity();
 
@@ -466,8 +430,7 @@ export fn input(event: ?*const sapp.Event) void {
         switch (ev.key_code) {
             .W => input_state.upPressed = true,
             .S =>  input_state.downPressed = true,
-            // .A => input_state.leftPressed = true,
-            // .D => input_state.rightPressed = true,
+
             .UP => input_state.pitchDownPressed = true,
             .DOWN => input_state.pitchUpPressed = true,
 
@@ -484,8 +447,7 @@ export fn input(event: ?*const sapp.Event) void {
         switch (ev.key_code) {
             .W => input_state.upPressed = false,
             .S =>  input_state.upPressed = false,
-            // .A => input_state.leftPressed = false,
-            // .D => input_state.rightPressed = false,
+
             .UP => input_state.pitchDownPressed = false,
             .DOWN => input_state.pitchUpPressed = false,
 
