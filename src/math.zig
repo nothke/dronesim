@@ -87,6 +87,10 @@ pub const Vec3 = extern struct {
     pub fn asArr(v: Vec3) [3]f32 {
         return .{ v.x, v.y, v.z };
     }
+
+    pub fn fromArr(arr: [3]f32) Vec3 {
+        return .{ .x = arr[0], .y = arr[1], .z = arr[2] };
+    }
 };
 
 pub const Mat4 = extern struct {

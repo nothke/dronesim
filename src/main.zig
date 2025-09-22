@@ -8,6 +8,7 @@ const mat4 = @import("math.zig").Mat4;
 const shd = @import("shaders/texcube.glsl.zig");
 const std = @import("std");
 const phy = @import("zphysics");
+const ig = @import("cimgui");
 const simgui = sokol.imgui;
 
 const max_cubes = 1024;
@@ -398,7 +399,15 @@ fn drawCube(vp: *const mat4, pos: vec3, size: vec3) void {
     sg.draw(0, 36, 1);
 }
 
+// #LOOP
 export fn frame() void {
+    simgui.newFrame(.{
+        .width = sapp.width(),
+        .height = sapp.height(),
+        .delta_time = sapp.frameDuration(),
+        .dpi_scale = sapp.dpiScale(),
+    });
+
     const dt: f32 = @floatCast(sapp.frameDuration());
 
     // Move to mat4
@@ -434,6 +443,8 @@ export fn frame() void {
 
     const bodies = state.physics_system.getBodiesUnsafe();
 
+    var speedKmH: f32 = 0;
+
     for (bodies) |body| {
         if (!phy.isValidBodyPointer(body) or body.motion_properties == null) continue;
 
@@ -442,6 +453,8 @@ export fn frame() void {
             const dpos = body.getWorldTransform().position;
             
             const r = body.getWorldTransform().rotation;
+
+            speedKmH = vec3.fromArr(body.getLinearVelocity()).len() * 3.6;
 
             // TODO: Move to mat4
             const rotMat = mat4{.m = .{
@@ -480,6 +493,16 @@ export fn frame() void {
         drawCube(&vp, cube.pos, cube.size);
     }
 
+    {
+        var b = true;
+        _ = ig.igBegin("window", &b, 0);
+        defer ig.igEnd();
+
+        ig.igText("speed kmh: %.2f", speedKmH);
+    }
+
+    simgui.render();
+    
     sg.endPass();
 
     sg.commit();
