@@ -12,6 +12,10 @@
             .url = "git+https://github.com/zig-gamedev/zphysics.git#87dbfd003e31623cede1137aa8a70f86619b5d5b",
             .hash = "zphysics-0.2.0-dev-nZDEAOXUQgCrjn_iSZke7zpWwqRUe_BRlrzRrDdXXPEz",
         },
+        .cimgui = .{
+            .url = "git+https://github.com/floooh/dcimgui.git#33c99ef426b68030412b5a4b11487a23da9d4f13",
+            .hash = "cimgui-0.1.0-44ClkQRJlABdFMKRqIG8KDD6jy1eQbgPO335NziPYjmL",
+        },
     },
     .paths = .{
         "build.zig",

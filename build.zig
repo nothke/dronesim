@@ -1,4 +1,5 @@
 const std = @import("std");
+const cimgui = @import("cimgui");
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
@@ -7,6 +8,14 @@ pub fn build(b: *std.Build) void {
     const dep_sokol = b.dependency("sokol", .{ .target = target, .optimize = optimize });
 
     const dep_zphysics = b.dependency("zphysics", .{});
+
+    const dep_cimgui = b.dependency("cimgui", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const cimgui_conf = cimgui.getConfig(false);
+    dep_sokol.artifact("sokol_clib").addIncludePath(dep_cimgui.path(cimgui_conf.include_dir));
 
     const exe = b.addExecutable(.{
         .name = "dronesim",
@@ -18,6 +27,10 @@ pub fn build(b: *std.Build) void {
                 .{
                     .name = "sokol",
                     .module = dep_sokol.module("sokol"),
+                },
+                .{
+                    .name = cimgui_conf.module_name,
+                    .module = dep_cimgui.module(cimgui_conf.module_name),
                 },
                 .{
                     .name = "zphysics",
