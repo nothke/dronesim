@@ -8,6 +8,7 @@ const mat4 = @import("math.zig").Mat4;
 const shd = @import("shaders/texcube.glsl.zig");
 const std = @import("std");
 const phy = @import("zphysics");
+const simgui = sokol.imgui;
 
 const max_cubes = 1024;
 const max_bodies = 1024;
@@ -209,6 +210,10 @@ fn createBox(body_interface: *phy.BodyInterface, pos: vec3, size: vec3) void {
 export fn init() void {
     sg.setup(.{
         .environment = sglue.environment(),
+        .logger = .{ .func = slog.func },
+    });
+
+    simgui.setup(.{
         .logger = .{ .func = slog.func },
     });
 
