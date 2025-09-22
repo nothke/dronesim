@@ -398,7 +398,9 @@ export fn frame() void {
             body.addForce(upForce.asArr());
             body.addTorque(.{2000 * pitchAccel, -1500 * yawAccel, -2000 * rollAccel});
 
-            body.applyBuoyancyImpulse(.{0,100,0}, .{0,1,0}, 0, 100, 0.5, .{0,0,0}, .{0,-9.81,0}, dt);
+            const dragMult: f32 = 0.5;
+            const angularDragMult: f32 = 0.5;
+            body.applyBuoyancyImpulse(.{0,body.position[1] + 100,0}, .{0,1,0}, 0.01, dragMult, angularDragMult, .{0,0,0}, .{0,-9.81,0}, dt);
         }
     }
 
@@ -435,7 +437,7 @@ export fn frame() void {
 
     // camera projection
     const aspect = sapp.widthf() / sapp.heightf();
-    const proj = mat4.persp(110.0, aspect, 0.01, 1000.0);
+    const proj = mat4.persp(110.0, aspect, 0.01, 10000.0);
 
     const vp = proj.mul(state.view);
     
