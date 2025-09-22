@@ -35,19 +35,6 @@ const WorldCube = struct {
     bodyId: phy.BodyId,
 };
 
-const input_state = struct {
-    var upPressed: bool = false;
-    var downPressed: bool = false;
-    var leftPressed: bool = false;
-    var rightPressed: bool = false;
-    var pitchUpPressed: bool = false;
-    var pitchDownPressed: bool = false;
-    var rollRightPressed: bool = false;
-    var rollLeftPressed: bool = false;
-    var yawRightPressed: bool = false;
-    var yawLeftPressed: bool = false;
-};
-
 // a vertex struct with position, color and uv-coords
 const Vertex = extern struct { x: f32, y: f32, z: f32, color: u32, u: i16, v: i16 };
 
@@ -190,16 +177,16 @@ const ContactListener = extern struct {
 // Nothkes physics
 
 fn createBoxBody(body_interface: *phy.BodyInterface, size: vec3, pos: vec3, moving: bool) !phy.BodyId {
-    const floor_shape_settings = try phy.BoxShapeSettings.create(.{ size.x, size.y, size.z });
-    defer floor_shape_settings.asShapeSettings().release();
+    const settings = try phy.BoxShapeSettings.create(.{ size.x, size.y, size.z });
+    defer settings.asShapeSettings().release();
 
-    const floor_shape = try floor_shape_settings.asShapeSettings().createShape();
-    defer floor_shape.release();
+    const shape = try settings.asShapeSettings().createShape();
+    defer shape.release();
 
     return try body_interface.createAndAddBody(.{
         .position = .{ pos.x, pos.y, pos.z, 0 },
         .rotation = .{ 0, 0, 0, 1 },
-        .shape = floor_shape,
+        .shape = shape,
         .motion_type = if (moving) .dynamic else .static,
         .object_layer = if (moving) object_layers.moving else object_layers.non_moving,
         .allow_sleeping = false,
@@ -318,6 +305,7 @@ export fn init() void {
     };
 
     // physics
+
     const alloc = std.heap.page_allocator;
 
     try phy.init(alloc, .{});
@@ -346,20 +334,21 @@ export fn init() void {
     },
     ) catch unreachable;
 
+    defer state.physics_system.optimizeBroadPhase();
+
     const body_interface = state.physics_system.getBodyInterfaceMut();
+
+    // physics spawning
 
     state.droneBodyId = createBoxBody(body_interface, vec3.new(0.5, 0.5, 0.5), vec3.new(0, 10, 0), true) catch unreachable;
 
-    state.physics_system.optimizeBroadPhase();
-
     state.cubes = std.ArrayListUnmanaged(WorldCube).initBuffer(&state.cubesBuffer);
 
-    createBox(body_interface, vec3.zero(), vec3.new(100, 1, 100));
+    createBox(body_interface, vec3.zero(), vec3.new(1000, 1, 1000));
     createBox(body_interface, vec3.new(0, 5, 10), vec3.new(1, 10, 1));
     createBox(body_interface, vec3.new(0, 5, -10), vec3.new(1, 10, 1));
     createBox(body_interface, vec3.new(5, 5, -20), vec3.new(1, 10, 1));
     createBox(body_interface, vec3.new(-5, 5, -30), vec3.new(1, 10, 1));
-
 }
 
 fn rawInputAxis(positive: bool, negative: bool) f32 {
@@ -386,6 +375,7 @@ fn drawCube(vp: *const mat4, pos: vec3, size: vec3) void {
 export fn frame() void {
     const dt: f32 = @floatCast(sapp.frameDuration());
 
+    // Move to mat4
     const dUp = vec3.new(state.view.m[0][1], state.view.m[1][1], state.view.m[2][1]);
     //const dRight = vec3.new(state.view.m[0][0], state.view.m[1][0], state.view.m[2][0]);
     //const dForward = vec3.new(state.view.m[0][2], state.view.m[1][2], state.view.m[2][2]);
@@ -402,7 +392,7 @@ export fn frame() void {
     for (mutBodies) |body| {
         if (!phy.isValidBodyPointer(body) or body.motion_properties == null) continue;
 
-        if (body.motion_type == .dynamic)
+        if (body.id == state.droneBodyId)
         {
             const upForce = vec3.mul(dUp, yAccel * 20000);
             body.addForce(upForce.asArr());
@@ -465,6 +455,19 @@ export fn frame() void {
 }
 
 // #INPUT
+const input_state = struct {
+    var upPressed: bool = false;
+    var downPressed: bool = false;
+    var leftPressed: bool = false;
+    var rightPressed: bool = false;
+    var pitchUpPressed: bool = false;
+    var pitchDownPressed: bool = false;
+    var rollRightPressed: bool = false;
+    var rollLeftPressed: bool = false;
+    var yawRightPressed: bool = false;
+    var yawLeftPressed: bool = false;
+};
+
 export fn input(event: ?*const sapp.Event) void {
     const ev = event.?;
 
@@ -481,6 +484,8 @@ export fn input(event: ?*const sapp.Event) void {
 
             .A => input_state.yawLeftPressed = true,
             .D => input_state.yawRightPressed = true,
+
+            .ESCAPE => sapp.requestQuit(),
             else => {},
         }
     }
@@ -519,7 +524,7 @@ pub fn main() void {
         .fullscreen = true,
         .sample_count = 4,
         .icon = .{ .sokol_default = true },
-        .window_title = "texcube.zig",
+        .window_title = "DroneSim",
         .logger = .{ .func = slog.func },
     });
 }
