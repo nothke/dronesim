@@ -9,6 +9,9 @@ const shd = @import("shaders/texcube.glsl.zig");
 const std = @import("std");
 const phy = @import("zphysics");
 
+const max_cubes = 1024;
+const max_bodies = 1024;
+
 const state = struct {
     const drone = struct {
         var pos: vec3 = vec3.zero();
@@ -25,7 +28,7 @@ const state = struct {
     var physics_system: *phy.PhysicsSystem = undefined;
     var droneBodyId: phy.BodyId = undefined;
 
-    var cubesBuffer: [64]WorldCube = undefined;
+    var cubesBuffer: [max_cubes]WorldCube = undefined;
     var cubes: std.ArrayListUnmanaged(WorldCube) = .{};
 };
 
@@ -330,7 +333,7 @@ export fn init() void {
         @as(*const phy.ObjectVsBroadPhaseLayerFilter, @ptrCast(object_vs_broad_phase_layer_filter)),
         @as(*const phy.ObjectLayerPairFilter, @ptrCast(object_layer_pair_filter)),
     .{
-        .max_bodies = 1024,
+        .max_bodies = max_bodies,
         .num_body_mutexes = 0,
         .max_body_pairs = 1024,
         .max_contact_constraints = 1024,
@@ -352,6 +355,21 @@ export fn init() void {
     createBox(body_interface, vec3.new(0, 5, -10), vec3.new(1, 10, 1));
     createBox(body_interface, vec3.new(5, 5, -20), vec3.new(1, 10, 1));
     createBox(body_interface, vec3.new(-5, 5, -30), vec3.new(1, 10, 1));
+
+    var pcg = std.Random.Pcg.init(234583423);
+    const r = pcg.random();
+
+    const range = 1000;
+
+    for (0..800) |_| {
+        createBox(body_interface, 
+        vec3.new(-500 + r.float(f32)*range, 20 + r.float(f32) * 20, -500 + r.float(f32)*range),
+        vec3.new(
+            1 + r.float(f32) * 6,
+            50 + r.float(f32) * 50,
+            1 + r.float(f32) * 6),
+            );
+    }
 }
 
 fn rawInputAxis(positive: bool, negative: bool) f32 {
