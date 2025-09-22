@@ -183,14 +183,17 @@ fn createBoxBody(body_interface: *phy.BodyInterface, size: vec3, pos: vec3, movi
     const shape = try settings.asShapeSettings().createShape();
     defer shape.release();
 
-    return try body_interface.createAndAddBody(.{
-        .position = .{ pos.x, pos.y, pos.z, 0 },
-        .rotation = .{ 0, 0, 0, 1 },
-        .shape = shape,
-        .motion_type = if (moving) .dynamic else .static,
-        .object_layer = if (moving) object_layers.moving else object_layers.non_moving,
-        .allow_sleeping = false,
-    }, .activate);
+    return try body_interface.createAndAddBody(
+        .{
+            .position = .{ pos.x, pos.y, pos.z, 0 },
+            .rotation = .{ 0, 0, 0, 1 },
+            .shape = shape,
+            .motion_type = if (moving) .dynamic else .static,
+            .object_layer = if (moving) object_layers.moving else object_layers.non_moving,
+            .allow_sleeping = false,
+        },
+        .activate,
+    );
 }
 
 // End of physics
@@ -376,9 +379,11 @@ export fn frame() void {
     const dt: f32 = @floatCast(sapp.frameDuration());
 
     // Move to mat4
-    const dUp = vec3.new(state.view.m[0][1], state.view.m[1][1], state.view.m[2][1]);
+    var dUp = vec3.new(state.view.m[0][1], state.view.m[1][1], state.view.m[2][1]);
     //const dRight = vec3.new(state.view.m[0][0], state.view.m[1][0], state.view.m[2][0]);
-    //const dForward = vec3.new(state.view.m[0][2], state.view.m[1][2], state.view.m[2][2]);
+    const dForward = vec3.new(state.view.m[0][2], state.view.m[1][2], state.view.m[2][2]);
+
+    dUp = dUp.add(dForward.mul(-0.7)).norm();
 
     const yAccel: f32 = rawInputAxis(input_state.upPressed, false);
     const pitchAccel: f32 = rawInputAxis(input_state.pitchDownPressed, input_state.pitchUpPressed);
@@ -394,11 +399,11 @@ export fn frame() void {
 
         if (body.id == state.droneBodyId)
         {
-            const upForce = vec3.mul(dUp, yAccel * 20000);
+            const upForce = vec3.mul(dUp, yAccel * 100000);
             body.addForce(upForce.asArr());
             body.addTorque(.{2000 * pitchAccel, -1500 * yawAccel, -2000 * rollAccel});
 
-            const dragMult: f32 = 0.5;
+            const dragMult: f32 = 2.0;
             const angularDragMult: f32 = 0.5;
             body.applyBuoyancyImpulse(.{0,body.position[1] + 100,0}, .{0,1,0}, 0.01, dragMult, angularDragMult, .{0,0,0}, .{0,-9.81,0}, dt);
         }
@@ -453,6 +458,7 @@ export fn frame() void {
     }
 
     sg.endPass();
+
     sg.commit();
 }
 
