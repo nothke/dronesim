@@ -352,7 +352,7 @@ export fn init() void {
 
     // physics spawning
 
-    state.droneBodyId = createBoxBody(body_interface, vec3.new(0.5, 0.5, 0.5), vec3.new(0, 10, 0), true) catch unreachable;
+    state.droneBodyId = createBoxBody(body_interface, vec3.new(0.5, 0.5, 0.5), vec3.new(0, 1, 0), true) catch unreachable;
 
     state.cubes = std.ArrayListUnmanaged(WorldCube).initBuffer(&state.cubesBuffer);
 
