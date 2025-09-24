@@ -48,6 +48,9 @@ pub fn build(b: *std.Build) void {
 
     b.installArtifact(exe);
 
+    exe.addIncludePath(b.path("deps/gamepad/include"));
+    exe.addObjectFile(b.path("deps/gamepad/lib/libstem_gamepad.a"));
+
     const run_step = b.step("run", "Run the app");
 
     const run_cmd = b.addRunArtifact(exe);

@@ -11,6 +11,10 @@ const phy = @import("zphysics");
 const ig = @import("cimgui");
 const simgui = sokol.imgui;
 
+const gamepad = @cImport({
+    @cInclude("Gamepad.h");
+});
+
 const max_cubes = 1024;
 const max_bodies = 1024;
 
@@ -32,6 +36,8 @@ const state = struct {
 
     var cubesBuffer: [max_cubes]WorldCube = undefined;
     var cubes: std.ArrayListUnmanaged(WorldCube) = .{};
+
+    var attachedGamepad: ?*gamepad.struct_Gamepad_device = null;
 };
 
 const WorldCube = struct {
@@ -208,6 +214,35 @@ fn createBox(body_interface: *phy.BodyInterface, pos: vec3, size: vec3) void {
     state.cubes.appendAssumeCapacity(.{ .pos = pos, .size = size, .bodyId = bodyId });
 }
 
+fn gamepadOnDeviceAttached(device: [*c]gamepad.struct_Gamepad_device, context: ?*anyopaque) callconv(.c) void {
+    _ = context;
+
+    const devicePtr: *gamepad.struct_Gamepad_device = @ptrCast(device.?);
+
+    state.attachedGamepad = devicePtr;
+
+    std.log.info("name: {s}, number of buttons: {}, number of axes {}", .{
+        devicePtr.description,
+        devicePtr.numAxes,
+        devicePtr.numButtons,
+    });
+}
+
+fn gamepadOnAxisMove(
+    device: [*c]gamepad.struct_Gamepad_device,
+    axisId: c_uint,
+    value: f32,
+    lastValue: f32,
+    timestamp: f64,
+    context: ?*anyopaque,
+) callconv(.c) void {
+    _ = device;
+    _ = timestamp;
+    _ = context;
+    std.log.info("axis moved: {}, went from: {} to: {}", .{ axisId, lastValue, value });
+}
+
+// #INIT
 export fn init() void {
     sg.setup(.{
         .environment = sglue.environment(),
@@ -217,6 +252,12 @@ export fn init() void {
     simgui.setup(.{
         .logger = .{ .func = slog.func },
     });
+
+    // gamepad input
+
+    gamepad.Gamepad_deviceAttachFunc(gamepadOnDeviceAttached, null);
+    gamepad.Gamepad_axisMoveFunc(gamepadOnAxisMove, null);
+    gamepad.Gamepad_init();
 
     const cs: f32 = 1;
 
@@ -352,7 +393,8 @@ export fn init() void {
 
     // physics spawning
 
-    state.droneBodyId = createBoxBody(body_interface, vec3.new(0.5, 0.5, 0.5), vec3.new(0, 1, 0), true) catch unreachable;
+    // #DRONEINIT
+    state.droneBodyId = createBoxBody(body_interface, vec3.new(0.1, 0.05, 0.1), vec3.new(0, 1, 0), true) catch unreachable;
 
     state.cubes = std.ArrayListUnmanaged(WorldCube).initBuffer(&state.cubesBuffer);
 
@@ -417,6 +459,10 @@ export fn frame() void {
 
     dUp = dUp.add(dForward.mul(-0.7)).norm();
 
+    // input
+
+    gamepad.Gamepad_processEvents();
+
     const yAccel: f32 = rawInputAxis(input_state.upPressed, false);
     const pitchAccel: f32 = rawInputAxis(input_state.pitchDownPressed, input_state.pitchUpPressed);
     const rollAccel: f32 = rawInputAxis(input_state.rollLeftPressed, input_state.rollRightPressed);
@@ -431,9 +477,18 @@ export fn frame() void {
 
         if (body.id == state.droneBodyId)
         {
-            const upForce = vec3.mul(dUp, yAccel * 100000);
+            // #DRONEUPDATE
+            const thrustForceMult = 200;
+            const rollPitchTorqueMult = 0.5;
+            const yawTorqueMult = 0.1;
+
+            const upForce = vec3.mul(dUp, yAccel * thrustForceMult);
             body.addForce(upForce.asArr());
-            body.addTorque(.{2000 * pitchAccel, -1500 * yawAccel, -2000 * rollAccel});
+            body.addTorque(.{
+                rollPitchTorqueMult * pitchAccel,
+                -yawTorqueMult * yawAccel,
+                -rollPitchTorqueMult * rollAccel,
+                });
 
             const dragMult: f32 = 2.0;
             const angularDragMult: f32 = 0.5;
@@ -575,7 +630,7 @@ pub fn main() void {
         .event_cb = input,
         .width = 800,
         .height = 600,
-        .fullscreen = true,
+        .fullscreen = false,
         .sample_count = 4,
         .icon = .{ .sokol_default = true },
         .window_title = "DroneSim",
