@@ -38,6 +38,8 @@ const state = struct {
     var cubes: std.ArrayListUnmanaged(WorldCube) = .{};
 
     var attachedGamepad: ?*gamepad.struct_Gamepad_device = null;
+
+    var gamepadInputThrottle: f32 = -1;
 };
 
 const WorldCube = struct {
@@ -239,10 +241,12 @@ fn gamepadOnAxisMove(
     _ = device;
     _ = timestamp;
     _ = context;
-    _ = axisId;
-    _ = value;
+    // _ = axisId;
+    // _ = value;
     _ = lastValue;
-    //std.log.info("axis moved: {}, went from: {} to: {}", .{ axisId, lastValue, value });
+    if (axisId == 5)
+        state.gamepadInputThrottle = value;
+    // std.log.info("axis moved: {}, went from: {} to: {}", .{ axisId, lastValue, value });
 }
 
 // #INIT
@@ -421,8 +425,8 @@ export fn init() void {
     }
 }
 
-fn keyAxisInput(positive: bool, negative: bool) f32 {
-    return if (positive) 1 else (if (negative) -1 else 0);
+fn keyAxisInput(negative: bool, positive: bool) f32 {
+    return if (negative) -1 else (if (positive) 1 else 0);
 }
 
 fn axisInput(rawInput: f32, deadzone: f32) f32 {
@@ -472,16 +476,16 @@ export fn frame() void {
 
     gamepad.Gamepad_processEvents();
 
-    var yAccel: f32 = keyAxisInput(input_state.upPressed, false);
+    var yAccel: f32 = keyAxisInput(false, input_state.upPressed);
     var pitchAccel: f32 = keyAxisInput(input_state.pitchDownPressed, input_state.pitchUpPressed);
     var rollAccel: f32 = keyAxisInput(input_state.rollLeftPressed, input_state.rollRightPressed);
     var yawAccel: f32 = keyAxisInput(input_state.yawLeftPressed, input_state.yawRightPressed);
 
     if (state.attachedGamepad) |gpad| {
-        yAccel = (1 + gpad.axisStates[5]) * 0.5;
-        yawAccel = axisInput(-gpad.axisStates[0], 0.2);
-        rollAccel = axisInput(-gpad.axisStates[3], 0.2);
-        pitchAccel = axisInput(-gpad.axisStates[4], 0.2);
+        yAccel = (1 + state.gamepadInputThrottle) * 0.5; // gpad.axisStates[5]
+        yawAccel = axisInput(gpad.axisStates[0], 0.2);
+        rollAccel = axisInput(gpad.axisStates[3], 0.2);
+        pitchAccel = axisInput(gpad.axisStates[4], 0.2);
     }
 
     // physics
@@ -500,9 +504,9 @@ export fn frame() void {
             const upForce = vec3.mul(dUp, yAccel * thrustForceMult);
             body.addForce(upForce.asArr());
             body.addTorque(.{
-                rollPitchTorqueMult * pitchAccel,
-                -yawTorqueMult * yawAccel,
-                -rollPitchTorqueMult * rollAccel,
+                -rollPitchTorqueMult * pitchAccel,
+                yawTorqueMult * yawAccel,
+                rollPitchTorqueMult * rollAccel,
             });
 
             const dragMult: f32 = 2.0;
