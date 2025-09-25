@@ -230,6 +230,15 @@ fn gamepadOnDeviceAttached(device: [*c]gamepad.struct_Gamepad_device, context: ?
     });
 }
 
+fn gamepadOnDeviceDetached(device: [*c]gamepad.struct_Gamepad_device, context: ?*anyopaque) callconv(.c) void {
+    _ = context;
+
+    const devicePtr: *gamepad.struct_Gamepad_device = @ptrCast(device.?);
+
+    if (devicePtr == state.attachedGamepad)
+        state.attachedGamepad = null;
+}
+
 fn gamepadOnAxisMove(
     device: [*c]gamepad.struct_Gamepad_device,
     axisId: c_uint,
@@ -263,6 +272,7 @@ export fn init() void {
     // gamepad input
 
     gamepad.Gamepad_deviceAttachFunc(gamepadOnDeviceAttached, null);
+    gamepad.Gamepad_deviceRemoveFunc(gamepadOnDeviceDetached, null);
     gamepad.Gamepad_axisMoveFunc(gamepadOnAxisMove, null);
     gamepad.Gamepad_init();
 
