@@ -239,7 +239,10 @@ fn gamepadOnAxisMove(
     _ = device;
     _ = timestamp;
     _ = context;
-    std.log.info("axis moved: {}, went from: {} to: {}", .{ axisId, lastValue, value });
+    _ = axisId;
+    _ = value;
+    _ = lastValue;
+    //std.log.info("axis moved: {}, went from: {} to: {}", .{ axisId, lastValue, value });
 }
 
 // #INIT
@@ -293,8 +296,8 @@ export fn init() void {
             .{ .x = -cs, .y =  1.0, .z =  cs, .color = 0xFF007FFF, .u = 32767, .v = 0 },
             .{ .x =  cs, .y =  1.0, .z =  cs, .color = 0xFF007FFF, .u = 32767, .v = 32767 },
             .{ .x =  cs, .y =  1.0, .z = -cs, .color = 0xFF007FFF, .u = 0,     .v = 32767 },
-            // zig fmt: on
         }),
+        // zig fmt: on
     });
 
     // cube index buffer
@@ -379,12 +382,12 @@ export fn init() void {
         @as(*const phy.BroadPhaseLayerInterface, @ptrCast(broadphase_layer_interface)),
         @as(*const phy.ObjectVsBroadPhaseLayerFilter, @ptrCast(object_vs_broad_phase_layer_filter)),
         @as(*const phy.ObjectLayerPairFilter, @ptrCast(object_layer_pair_filter)),
-    .{
-        .max_bodies = max_bodies,
-        .num_body_mutexes = 0,
-        .max_body_pairs = 1024,
-        .max_contact_constraints = 1024,
-    },
+        .{
+            .max_bodies = max_bodies,
+            .num_body_mutexes = 0,
+            .max_body_pairs = 1024,
+            .max_contact_constraints = 1024,
+        },
     ) catch unreachable;
 
     defer state.physics_system.optimizeBroadPhase();
@@ -410,13 +413,11 @@ export fn init() void {
     const range = 1000;
 
     for (0..800) |_| {
-        createBox(body_interface, 
-        vec3.new(-500 + r.float(f32)*range, 20 + r.float(f32) * 20, -500 + r.float(f32)*range),
-        vec3.new(
-            1 + r.float(f32) * 6,
-            50 + r.float(f32) * 50,
-            1 + r.float(f32) * 6),
-            );
+        createBox(
+            body_interface,
+            vec3.new(-500 + r.float(f32) * range, 20 + r.float(f32) * 20, -500 + r.float(f32) * range),
+            vec3.new(1 + r.float(f32) * 6, 50 + r.float(f32) * 50, 1 + r.float(f32) * 6),
+        );
     }
 }
 
@@ -426,12 +427,12 @@ fn rawInputAxis(positive: bool, negative: bool) f32 {
 
 fn drawCube(vp: *const mat4, pos: vec3, size: vec3) void {
     // TODO: Move to math
-    const scale = mat4{.m = .{
-        .{size.x,0,0,0}, 
-        .{0,size.y,0,0}, 
-        .{0,0,size.z,0},
-        .{0,0,0,1},
-    }};
+    const scale = mat4{ .m = .{
+        .{ size.x, 0, 0, 0 },
+        .{ 0, size.y, 0, 0 },
+        .{ 0, 0, size.z, 0 },
+        .{ 0, 0, 0, 1 },
+    } };
 
     const model = mat4.translate(pos).mul(scale);
 
@@ -463,10 +464,17 @@ export fn frame() void {
 
     gamepad.Gamepad_processEvents();
 
-    const yAccel: f32 = rawInputAxis(input_state.upPressed, false);
-    const pitchAccel: f32 = rawInputAxis(input_state.pitchDownPressed, input_state.pitchUpPressed);
-    const rollAccel: f32 = rawInputAxis(input_state.rollLeftPressed, input_state.rollRightPressed);
-    const yawAccel: f32 = rawInputAxis(input_state.yawLeftPressed, input_state.yawRightPressed);
+    var yAccel: f32 = rawInputAxis(input_state.upPressed, false);
+    var pitchAccel: f32 = rawInputAxis(input_state.pitchDownPressed, input_state.pitchUpPressed);
+    var rollAccel: f32 = rawInputAxis(input_state.rollLeftPressed, input_state.rollRightPressed);
+    var yawAccel: f32 = rawInputAxis(input_state.yawLeftPressed, input_state.yawRightPressed);
+
+    if (state.attachedGamepad) |gpad| {
+        yAccel = (1 + gpad.axisStates[5]) * 0.5;
+        yawAccel = -gpad.axisStates[0];
+        rollAccel = -gpad.axisStates[3];
+        pitchAccel = -gpad.axisStates[4];
+    }
 
     // physics
 
@@ -475,8 +483,7 @@ export fn frame() void {
     for (mutBodies) |body| {
         if (!phy.isValidBodyPointer(body) or body.motion_properties == null) continue;
 
-        if (body.id == state.droneBodyId)
-        {
+        if (body.id == state.droneBodyId) {
             // #DRONEUPDATE
             const thrustForceMult = 200;
             const rollPitchTorqueMult = 0.5;
@@ -488,11 +495,11 @@ export fn frame() void {
                 rollPitchTorqueMult * pitchAccel,
                 -yawTorqueMult * yawAccel,
                 -rollPitchTorqueMult * rollAccel,
-                });
+            });
 
             const dragMult: f32 = 2.0;
             const angularDragMult: f32 = 0.5;
-            body.applyBuoyancyImpulse(.{0,body.position[1] + 100,0}, .{0,1,0}, 0.01, dragMult, angularDragMult, .{0,0,0}, .{0,-9.81,0}, dt);
+            body.applyBuoyancyImpulse(.{ 0, body.position[1] + 100, 0 }, .{ 0, 1, 0 }, 0.01, dragMult, angularDragMult, .{ 0, 0, 0 }, .{ 0, -9.81, 0 }, dt);
         }
     }
 
@@ -503,25 +510,24 @@ export fn frame() void {
     for (bodies) |body| {
         if (!phy.isValidBodyPointer(body) or body.motion_properties == null) continue;
 
-        if(body.motion_type == .dynamic) {
+        if (body.motion_type == .dynamic) {
             var v = mat4.identity();
             const dpos = body.getWorldTransform().position;
-            
+
             const r = body.getWorldTransform().rotation;
 
             speedKmH = vec3.fromArr(body.getLinearVelocity()).len() * 3.6;
 
             // TODO: Move to mat4
-            const rotMat = mat4{.m = .{
-                .{r[0], r[1], r[2], 0},
-                .{r[3], r[4], r[5], 0},
-                .{r[6], r[7], r[8], 0},
-                .{0,0,0,1},
-                }};
+            const rotMat = mat4{ .m = .{
+                .{ r[0], r[1], r[2], 0 },
+                .{ r[3], r[4], r[5], 0 },
+                .{ r[6], r[7], r[8], 0 },
+                .{ 0, 0, 0, 1 },
+            } };
 
             v = v.mul(rotMat);
             v = v.mul(mat4.translate(vec3.new(dpos[0], dpos[1], dpos[2]).mul(-1)));
-
 
             state.view = v;
         }
@@ -536,7 +542,7 @@ export fn frame() void {
     const proj = mat4.persp(110.0, aspect, 0.01, 10000.0);
 
     const vp = proj.mul(state.view);
-    
+
     // vs params
 
     // rendering
@@ -550,14 +556,24 @@ export fn frame() void {
 
     {
         var b = true;
+        ig.igSetNextWindowSize(.{ .x = 300, .y = 0 }, 0);
         _ = ig.igBegin("window", &b, 0);
         defer ig.igEnd();
 
         ig.igText("speed kmh: %.2f", speedKmH);
+
+        var strbuf = std.mem.zeroes([64]u8);
+        if (state.attachedGamepad) |gpad| {
+            for (0..gpad.numAxes) |i| {
+                var axis1 = gpad.axisStates[i];
+                const strSlice = std.fmt.bufPrintZ(&strbuf, "axis {}", .{i}) catch unreachable;
+                _ = ig.igSliderFloat(strSlice.ptr, &axis1, -1, 1);
+            }
+        }
     }
 
     simgui.render();
-    
+
     sg.endPass();
 
     sg.commit();
@@ -583,7 +599,7 @@ export fn input(event: ?*const sapp.Event) void {
     if (ev.type == .KEY_DOWN) {
         switch (ev.key_code) {
             .W => input_state.upPressed = true,
-            .S =>  input_state.downPressed = true,
+            .S => input_state.downPressed = true,
 
             .UP => input_state.pitchDownPressed = true,
             .DOWN => input_state.pitchUpPressed = true,
@@ -602,7 +618,7 @@ export fn input(event: ?*const sapp.Event) void {
     if (ev.type == .KEY_UP) {
         switch (ev.key_code) {
             .W => input_state.upPressed = false,
-            .S =>  input_state.upPressed = false,
+            .S => input_state.upPressed = false,
 
             .UP => input_state.pitchDownPressed = false,
             .DOWN => input_state.pitchUpPressed = false,
