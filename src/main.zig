@@ -11,7 +11,7 @@ const phy = @import("zphysics");
 const ig = @import("cimgui");
 const simgui = sokol.imgui;
 
-const gamepad = @cImport({
+const c = @cImport({
     @cInclude("Gamepad.h");
 });
 
@@ -37,7 +37,7 @@ const state = struct {
     var cubesBuffer: [max_cubes]WorldCube = undefined;
     var cubes: std.ArrayListUnmanaged(WorldCube) = .{};
 
-    var attachedGamepad: ?*gamepad.struct_Gamepad_device = null;
+    var attachedGamepad: ?*c.struct_Gamepad_device = null;
 
     var gamepadInputThrottle: f32 = -1;
 
@@ -219,31 +219,33 @@ fn createBox(body_interface: *phy.BodyInterface, pos: vec3, size: vec3) void {
     state.cubes.appendAssumeCapacity(.{ .pos = pos, .size = size, .bodyId = bodyId });
 }
 
-fn gamepadOnDeviceAttached(device: [*c]gamepad.struct_Gamepad_device, context: ?*anyopaque) callconv(.c) void {
+fn gamepadOnDeviceAttached(device: [*c]c.struct_Gamepad_device, context: ?*anyopaque) callconv(.c) void {
     _ = context;
 
-    const devicePtr: *gamepad.struct_Gamepad_device = @ptrCast(device.?);
+    const devicePtr: *c.struct_Gamepad_device = @ptrCast(device.?);
 
     state.attachedGamepad = devicePtr;
 
-    std.log.info("name: {s}, number of buttons: {}, number of axes {}", .{
+    std.log.info("name: {s}, number of buttons: {}, number of axes {}, vendor: {}, product: {}", .{
         devicePtr.description,
         devicePtr.numAxes,
         devicePtr.numButtons,
+        devicePtr.vendorID,
+        devicePtr.productID,
     });
 }
 
-fn gamepadOnDeviceDetached(device: [*c]gamepad.struct_Gamepad_device, context: ?*anyopaque) callconv(.c) void {
+fn gamepadOnDeviceDetached(device: [*c]c.struct_Gamepad_device, context: ?*anyopaque) callconv(.c) void {
     _ = context;
 
-    const devicePtr: *gamepad.struct_Gamepad_device = @ptrCast(device.?);
+    const devicePtr: *c.struct_Gamepad_device = @ptrCast(device.?);
 
     if (devicePtr == state.attachedGamepad)
         state.attachedGamepad = null;
 }
 
 fn gamepadOnAxisMove(
-    device: [*c]gamepad.struct_Gamepad_device,
+    device: [*c]c.struct_Gamepad_device,
     axisId: c_uint,
     value: f32,
     lastValue: f32,
@@ -274,10 +276,10 @@ export fn init() void {
 
     // gamepad input
 
-    gamepad.Gamepad_deviceAttachFunc(gamepadOnDeviceAttached, null);
-    gamepad.Gamepad_deviceRemoveFunc(gamepadOnDeviceDetached, null);
-    gamepad.Gamepad_axisMoveFunc(gamepadOnAxisMove, null);
-    gamepad.Gamepad_init();
+    c.Gamepad_deviceAttachFunc(gamepadOnDeviceAttached, null);
+    c.Gamepad_deviceRemoveFunc(gamepadOnDeviceDetached, null);
+    c.Gamepad_axisMoveFunc(gamepadOnAxisMove, null);
+    c.Gamepad_init();
 
     const cs: f32 = 1;
 
@@ -489,11 +491,11 @@ export fn frame() void {
 
     if (state.iterationsToNextGamepadPoll > state.iterationsToWaitForGamepadPoll) {
         state.iterationsToNextGamepadPoll = 0;
-        gamepad.Gamepad_detectDevices();
+        c.Gamepad_detectDevices();
     }
     state.iterationsToNextGamepadPoll += 1;
 
-    gamepad.Gamepad_processEvents();
+    c.Gamepad_processEvents();
 
     var yAccel: f32 = keyAxisInput(false, input_state.upPressed);
     var pitchAccel: f32 = keyAxisInput(input_state.pitchDownPressed, input_state.pitchUpPressed);
