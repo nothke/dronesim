@@ -40,6 +40,9 @@ const state = struct {
     var attachedGamepad: ?*gamepad.struct_Gamepad_device = null;
 
     var gamepadInputThrottle: f32 = -1;
+
+    var iterationsToNextGamepadPoll: u8 = 0;
+    const iterationsToWaitForGamepadPoll = 60;
 };
 
 const WorldCube = struct {
@@ -483,6 +486,12 @@ export fn frame() void {
     dUp = dUp.add(dForward.mul(-0.7)).norm();
 
     // input
+
+    if (state.iterationsToNextGamepadPoll > state.iterationsToWaitForGamepadPoll) {
+        state.iterationsToNextGamepadPoll = 0;
+        gamepad.Gamepad_detectDevices();
+    }
+    state.iterationsToNextGamepadPoll += 1;
 
     gamepad.Gamepad_processEvents();
 
