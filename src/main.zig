@@ -421,8 +421,16 @@ export fn init() void {
     }
 }
 
-fn rawInputAxis(positive: bool, negative: bool) f32 {
+fn keyAxisInput(positive: bool, negative: bool) f32 {
     return if (positive) 1 else (if (negative) -1 else 0);
+}
+
+fn axisInput(rawInput: f32, deadzone: f32) f32 {
+    const abs = @max(0, (@abs(rawInput) * (1 + deadzone * 2) - deadzone * 2));
+    if (std.math.sign(rawInput) > 0)
+        return abs
+    else
+        return -abs;
 }
 
 fn drawCube(vp: *const mat4, pos: vec3, size: vec3) void {
@@ -464,16 +472,16 @@ export fn frame() void {
 
     gamepad.Gamepad_processEvents();
 
-    var yAccel: f32 = rawInputAxis(input_state.upPressed, false);
-    var pitchAccel: f32 = rawInputAxis(input_state.pitchDownPressed, input_state.pitchUpPressed);
-    var rollAccel: f32 = rawInputAxis(input_state.rollLeftPressed, input_state.rollRightPressed);
-    var yawAccel: f32 = rawInputAxis(input_state.yawLeftPressed, input_state.yawRightPressed);
+    var yAccel: f32 = keyAxisInput(input_state.upPressed, false);
+    var pitchAccel: f32 = keyAxisInput(input_state.pitchDownPressed, input_state.pitchUpPressed);
+    var rollAccel: f32 = keyAxisInput(input_state.rollLeftPressed, input_state.rollRightPressed);
+    var yawAccel: f32 = keyAxisInput(input_state.yawLeftPressed, input_state.yawRightPressed);
 
     if (state.attachedGamepad) |gpad| {
         yAccel = (1 + gpad.axisStates[5]) * 0.5;
-        yawAccel = -gpad.axisStates[0];
-        rollAccel = -gpad.axisStates[3];
-        pitchAccel = -gpad.axisStates[4];
+        yawAccel = axisInput(-gpad.axisStates[0], 0.2);
+        rollAccel = axisInput(-gpad.axisStates[3], 0.2);
+        pitchAccel = axisInput(-gpad.axisStates[4], 0.2);
     }
 
     // physics
@@ -555,6 +563,7 @@ export fn frame() void {
     }
 
     {
+        // #GUI
         var b = true;
         ig.igSetNextWindowSize(.{ .x = 300, .y = 0 }, 0);
         _ = ig.igBegin("window", &b, 0);
@@ -570,6 +579,12 @@ export fn frame() void {
                 _ = ig.igSliderFloat(strSlice.ptr, &axis1, -1, 1);
             }
         }
+
+        ig.igText("Inputs:");
+        _ = ig.igSliderFloat("roll", &rollAccel, -1, 1);
+        _ = ig.igSliderFloat("pitch", &pitchAccel, -1, 1);
+        _ = ig.igSliderFloat("yaw", &yawAccel, -1, 1);
+        _ = ig.igSliderFloat("throttle", &yAccel, 0, 1);
     }
 
     simgui.render();
