@@ -475,7 +475,7 @@ export fn frame() void {
         .width = sapp.width(),
         .height = sapp.height(),
         .delta_time = sapp.frameDuration(),
-        .dpi_scale = sapp.dpiScale(),
+        .dpi_scale = 1,
     });
 
     const dt: f32 = @floatCast(sapp.frameDuration());
