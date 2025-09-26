@@ -43,6 +43,8 @@ const state = struct {
 
     var iterationsToNextGamepadPoll: u8 = 0;
     const iterationsToWaitForGamepadPoll = 60;
+
+    var useGamepad = true;
 };
 
 const WorldCube = struct {
@@ -502,11 +504,13 @@ export fn frame() void {
     var rollAccel: f32 = keyAxisInput(input_state.rollLeftPressed, input_state.rollRightPressed);
     var yawAccel: f32 = keyAxisInput(input_state.yawLeftPressed, input_state.yawRightPressed);
 
-    if (state.attachedGamepad) |gpad| {
-        yAccel = (1 + state.gamepadInputThrottle) * 0.5; // gpad.axisStates[5]
-        yawAccel = axisInput(gpad.axisStates[0], 0.2);
-        rollAccel = axisInput(gpad.axisStates[3], 0.2);
-        pitchAccel = axisInput(gpad.axisStates[4], 0.2);
+    if (state.useGamepad) {
+        if (state.attachedGamepad) |gpad| {
+            yAccel = (1 + state.gamepadInputThrottle) * 0.5; // gpad.axisStates[5]
+            yawAccel = axisInput(gpad.axisStates[0], 0.2);
+            rollAccel = axisInput(gpad.axisStates[3], 0.2);
+            pitchAccel = axisInput(gpad.axisStates[4], 0.2);
+        }
     }
 
     yAccel = std.math.clamp(yAccel, 0, 1);
@@ -601,14 +605,16 @@ export fn frame() void {
 
         ig.igText("speed kmh: %.2f", speedKmH);
 
+        _ = ig.igCheckbox("use gamepad", &state.useGamepad);
+
         var strbuf = std.mem.zeroes([64]u8);
         if (state.attachedGamepad) |gpad| {
             ig.igText("Device: %s", gpad.description);
 
             for (0..gpad.numAxes) |i| {
-                var axis1 = gpad.axisStates[i];
-                const strSlice = std.fmt.bufPrintZ(&strbuf, "axis {}", .{i}) catch unreachable;
-                _ = ig.igSliderFloat(strSlice.ptr, &axis1, -1, 1);
+                var axisValue = gpad.axisStates[i];
+                const axisName = std.fmt.bufPrintZ(&strbuf, "axis {}", .{i}) catch unreachable;
+                _ = ig.igSliderFloat(axisName.ptr, &axisValue, -1, 1);
             }
         }
 
