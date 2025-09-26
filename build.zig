@@ -46,10 +46,10 @@ pub fn build(b: *std.Build) void {
 
     exe.linkLibrary(dep_zphysics.artifact("joltc"));
 
-    b.installArtifact(exe);
+    const gamepad_dep = b.dependency("libstem_gamepad", .{ .target = target, .optimize = optimize });
+    exe.linkLibrary(gamepad_dep.artifact("stem_gamepad"));
 
-    exe.addIncludePath(b.path("deps/gamepad/include"));
-    exe.addObjectFile(b.path("deps/gamepad/lib/libstem_gamepad.a"));
+    b.installArtifact(exe);
 
     const run_step = b.step("run", "Run the app");
 

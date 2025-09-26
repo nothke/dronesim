@@ -16,6 +16,10 @@
             .url = "git+https://github.com/floooh/dcimgui.git#33c99ef426b68030412b5a4b11487a23da9d4f13",
             .hash = "cimgui-0.1.0-44ClkQRJlABdFMKRqIG8KDD6jy1eQbgPO335NziPYjmL",
         },
+        .libstem_gamepad = .{
+            .url = "git+https://github.com/nothke/libstem-gamepad-zig.git#782d58634237500b67bde5bdc6c1aa38d9548dbc",
+            .hash = "libstem_gamepad-1.4.2-zoH3kzPWAQB_GHd21VJNL7FSfdlFpjtkpJAnKBf3bItb",
+        },
     },
     .paths = .{
         "build.zig",
