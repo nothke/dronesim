@@ -509,6 +509,11 @@ export fn frame() void {
         pitchAccel = axisInput(gpad.axisStates[4], 0.2);
     }
 
+    yAccel = std.math.clamp(yAccel, 0, 1);
+    pitchAccel = std.math.clamp(pitchAccel, -1, 1);
+    rollAccel = std.math.clamp(rollAccel, -1, 1);
+    yawAccel = std.math.clamp(yawAccel, -1, 1);
+
     // physics
 
     const mutBodies = state.physics_system.getBodiesMutUnsafe();
@@ -598,6 +603,8 @@ export fn frame() void {
 
         var strbuf = std.mem.zeroes([64]u8);
         if (state.attachedGamepad) |gpad| {
+            ig.igText("Device: %s", gpad.description);
+
             for (0..gpad.numAxes) |i| {
                 var axis1 = gpad.axisStates[i];
                 const strSlice = std.fmt.bufPrintZ(&strbuf, "axis {}", .{i}) catch unreachable;
