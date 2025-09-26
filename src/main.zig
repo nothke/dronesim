@@ -228,7 +228,7 @@ fn gamepadOnDeviceAttached(device: [*c]c.struct_Gamepad_device, context: ?*anyop
 
     state.attachedGamepad = devicePtr;
 
-    std.log.info("name: {s}, number of buttons: {}, number of axes {}, vendor: {}, product: {}", .{
+    std.log.info("Controller attached: {s}, buttons: {}, axes {}, vendor/product: {}/{}", .{
         devicePtr.description,
         devicePtr.numAxes,
         devicePtr.numButtons,
@@ -648,6 +648,9 @@ const input_state = struct {
 
 export fn input(event: ?*const sapp.Event) void {
     const ev = event.?;
+
+    if (simgui.handleEvent(ev.*))
+        return;
 
     if (ev.type == .KEY_DOWN) {
         switch (ev.key_code) {
