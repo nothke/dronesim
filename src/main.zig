@@ -47,11 +47,16 @@ const state = struct {
     var useGamepad = true;
 };
 
+const Axis = struct {
+    id: u8 = 0,
+    deadzone: f32 = 0.2,
+};
+
 const AxisBindings = struct {
-    throttleAxis: u8 = 0,
-    pitchAxis: u8 = 0,
-    rollAxis: u8 = 0,
-    yawAxis: u8 = 0,
+    throttle: Axis = .{},
+    pitch: Axis = .{},
+    roll: Axis = .{},
+    yaw: Axis = .{},
 };
 
 var axisBindings: AxisBindings = .{};
@@ -269,8 +274,8 @@ fn gamepadOnAxisMove(
     // _ = axisId;
     // _ = value;
     _ = lastValue;
-    if (axisId == axisBindings.throttleAxis)
-        state.gamepadInputThrottle = value;
+    if (axisId == axisBindings.throttle.id)
+        state.gamepadInputThrottle = axisInput(value, axisBindings.throttle.deadzone);
     // std.log.info("axis moved: {}, went from: {} to: {}", .{ axisId, lastValue, value });
 }
 
@@ -516,9 +521,9 @@ export fn frame() void {
     if (state.useGamepad) {
         if (state.attachedGamepad) |gpad| {
             yAccel = (1 + state.gamepadInputThrottle) * 0.5; // gpad.axisStates[5]
-            yawAccel = axisInput(gpad.axisStates[axisBindings.yawAxis], 0.2);
-            rollAccel = axisInput(gpad.axisStates[axisBindings.rollAxis], 0.2);
-            pitchAccel = axisInput(gpad.axisStates[axisBindings.pitchAxis], 0.2);
+            yawAccel = axisInput(gpad.axisStates[axisBindings.yaw.id], axisBindings.yaw.deadzone);
+            rollAccel = axisInput(gpad.axisStates[axisBindings.roll.id], axisBindings.roll.deadzone);
+            pitchAccel = axisInput(gpad.axisStates[axisBindings.pitch.id], axisBindings.pitch.deadzone);
         }
     }
 
@@ -689,9 +694,19 @@ export fn cleanup() void {
 fn processConfigLine(key: []const u8, value: []const u8) !void {
     const fields = std.meta.fields(AxisBindings);
 
-    inline for (fields) |field| {
-        if (std.mem.eql(u8, key, field.name)) {
-            @field(axisBindings, field.name) = try std.fmt.parseInt(u8, value, 10);
+    if (std.mem.indexOf(u8, key, "_")) |index| {
+        const actionName = key[0..index];
+
+        inline for (fields) |field| {
+            if (std.mem.eql(u8, actionName, field.name)) {
+                const suffix = key[index + 1 ..];
+
+                if (std.mem.eql(u8, suffix, "axis")) {
+                    @field(axisBindings, field.name).id = try std.fmt.parseInt(u8, value, 10);
+                } else if (std.mem.eql(u8, suffix, "deadzone")) {
+                    @field(axisBindings, field.name).deadzone = try std.fmt.parseFloat(f32, value);
+                }
+            }
         }
     }
 }
