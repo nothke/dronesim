@@ -687,14 +687,12 @@ export fn cleanup() void {
 }
 
 fn processConfigLine(key: []const u8, value: []const u8) !void {
-    if (std.mem.eql(u8, key, "throttleAxis")) {
-        axisBindings.throttleAxis = try std.fmt.parseInt(u8, value, 10);
-    } else if (std.mem.eql(u8, key, "pitchAxis")) {
-        axisBindings.pitchAxis = try std.fmt.parseInt(u8, value, 10);
-    } else if (std.mem.eql(u8, key, "rollAxis")) {
-        axisBindings.rollAxis = try std.fmt.parseInt(u8, value, 10);
-    } else if (std.mem.eql(u8, key, "yawAxis")) {
-        axisBindings.yawAxis = try std.fmt.parseInt(u8, value, 10);
+    const fields = std.meta.fields(AxisBindings);
+
+    inline for (fields) |field| {
+        if (std.mem.eql(u8, key, field.name)) {
+            @field(axisBindings, field.name) = try std.fmt.parseInt(u8, value, 10);
+        }
     }
 }
 
