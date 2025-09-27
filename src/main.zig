@@ -645,6 +645,7 @@ pub const InputMap = struct {
     pub const rollRight = K.RIGHT;
     pub const yawLeft = K.A;
     pub const yawRight = K.D;
+    pub const exit = K.ESCAPE;
 };
 
 fn InputState() type {
@@ -688,6 +689,9 @@ export fn input(event: ?*const sapp.Event) void {
             }
         }
     }
+
+    if (input_state.exit)
+        sapp.requestQuit();
 }
 
 export fn cleanup() void {
