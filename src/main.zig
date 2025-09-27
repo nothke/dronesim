@@ -676,7 +676,33 @@ export fn cleanup() void {
     phy.deinit();
 }
 
-pub fn main() void {
+pub fn main() !void {
+
+    // ini
+    {
+        const file = try std.fs.cwd().openFile("config.ini", .{ .mode = .read_write });
+        defer file.close();
+
+        var readBuff: [1024]u8 = undefined;
+        var reader = file.readerStreaming(&readBuff);
+        while (reader.interface.takeDelimiterExclusive('\n')) |line| {
+            std.log.info("PROCESSING LINE: '{s}'", .{line});
+
+            if (line[0] == '#') {
+                {}
+            } else if (std.mem.indexOf(u8, line, "=")) |index| {
+                const keySlice = std.mem.trim(u8, line[0..index], " ");
+                const valueSlice = std.mem.trim(u8, line[(index + 1)..], " ");
+                std.log.info("key: '{s}' value: '{s}'", .{ keySlice, valueSlice });
+            }
+        } else |err| {
+            switch (err) {
+                error.EndOfStream => {},
+                else => return err,
+            }
+        }
+    }
+
     sapp.run(.{
         .init_cb = init,
         .frame_cb = frame,
