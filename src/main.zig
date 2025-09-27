@@ -499,10 +499,10 @@ export fn frame() void {
 
     c.Gamepad_processEvents();
 
-    var yAccel: f32 = keyAxisInput(false, input_state.upPressed);
-    var pitchAccel: f32 = keyAxisInput(input_state.pitchDownPressed, input_state.pitchUpPressed);
-    var rollAccel: f32 = keyAxisInput(input_state.rollLeftPressed, input_state.rollRightPressed);
-    var yawAccel: f32 = keyAxisInput(input_state.yawLeftPressed, input_state.yawRightPressed);
+    var yAccel: f32 = keyAxisInput(false, input_state.throttleUp);
+    var pitchAccel: f32 = keyAxisInput(input_state.pitchDown, input_state.pitchUp);
+    var rollAccel: f32 = keyAxisInput(input_state.rollLeft, input_state.rollRight);
+    var yawAccel: f32 = keyAxisInput(input_state.yawLeft, input_state.yawRight);
 
     if (state.useGamepad) {
         if (state.attachedGamepad) |gpad| {
@@ -639,15 +639,13 @@ pub const InputMap = struct {
 
     pub const throttleUp = K.W;
     pub const throttleDown = K.S;
-    pub const pitchUp = K.UP;
-    pub const pitchDown = K.DOWN;
-    pub const rollRight = K.RIGHT;
+    pub const pitchUp = K.DOWN;
+    pub const pitchDown = K.UP;
     pub const rollLeft = K.LEFT;
-    pub const yawRight = K.A;
-    pub const yawLeft = K.D;
+    pub const rollRight = K.RIGHT;
+    pub const yawLeft = K.A;
+    pub const yawRight = K.D;
 };
-
-const declsNum = @typeInfo(InputMap).@"struct".decls.len;
 
 fn InputState() type {
     const decls = @typeInfo(InputMap).@"struct".decls;
@@ -672,70 +670,22 @@ fn InputState() type {
     } });
 }
 
-const input_state2 = InputState(){};
-
-fn something() void {
-    @compileError(std.fmt.comptimePrint("{}", .{declsNum}));
-}
-
-// comptime {
-//     _ = something();
-// }
-
-const input_state = struct {
-    var upPressed: bool = false;
-    var downPressed: bool = false;
-    var leftPressed: bool = false;
-    var rightPressed: bool = false;
-    var pitchUpPressed: bool = false;
-    var pitchDownPressed: bool = false;
-    var rollRightPressed: bool = false;
-    var rollLeftPressed: bool = false;
-    var yawRightPressed: bool = false;
-    var yawLeftPressed: bool = false;
-};
+var input_state = InputState(){};
 
 export fn input(event: ?*const sapp.Event) void {
     const ev = event.?;
 
-    _ = input_state2.throttleUp;
-
     if (simgui.handleEvent(ev.*))
         return;
 
-    if (ev.type == .KEY_DOWN) {
-        switch (ev.key_code) {
-            .W => input_state.upPressed = true,
-            .S => input_state.downPressed = true,
-
-            .UP => input_state.pitchDownPressed = true,
-            .DOWN => input_state.pitchUpPressed = true,
-
-            .LEFT => input_state.rollLeftPressed = true,
-            .RIGHT => input_state.rollRightPressed = true,
-
-            .A => input_state.yawLeftPressed = true,
-            .D => input_state.yawRightPressed = true,
-
-            .ESCAPE => sapp.requestQuit(),
-            else => {},
-        }
-    }
-
-    if (ev.type == .KEY_UP) {
-        switch (ev.key_code) {
-            .W => input_state.upPressed = false,
-            .S => input_state.upPressed = false,
-
-            .UP => input_state.pitchDownPressed = false,
-            .DOWN => input_state.pitchUpPressed = false,
-
-            .LEFT => input_state.rollLeftPressed = false,
-            .RIGHT => input_state.rollRightPressed = false,
-
-            .A => input_state.yawLeftPressed = false,
-            .D => input_state.yawRightPressed = false,
-            else => {},
+    inline for (std.meta.fields(@TypeOf(input_state))) |field| {
+        const key: sapp.Keycode = @field(InputMap, field.name);
+        if (ev.key_code == key) {
+            switch (ev.type) {
+                .KEY_DOWN => @field(input_state, field.name) = true,
+                .KEY_UP => @field(input_state, field.name) = false,
+                else => {},
+            }
         }
     }
 }
