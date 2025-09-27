@@ -513,10 +513,10 @@ export fn frame() void {
 
     c.Gamepad_processEvents();
 
-    var yAccel: f32 = keyAxisInput(false, input_state.throttleUp);
-    var pitchAccel: f32 = keyAxisInput(input_state.pitchDown, input_state.pitchUp);
-    var rollAccel: f32 = keyAxisInput(input_state.rollLeft, input_state.rollRight);
-    var yawAccel: f32 = keyAxisInput(input_state.yawLeft, input_state.yawRight);
+    var yAccel: f32 = keyAxisInput(false, input_state.throttle_up);
+    var pitchAccel: f32 = keyAxisInput(input_state.pitch_down, input_state.pitch_up);
+    var rollAccel: f32 = keyAxisInput(input_state.roll_left, input_state.roll_right);
+    var yawAccel: f32 = keyAxisInput(input_state.yaw_left, input_state.yaw_right);
 
     if (state.useGamepad) {
         if (state.attachedGamepad) |gpad| {
@@ -651,15 +651,15 @@ export fn frame() void {
 pub const InputMap = struct {
     const K = sapp.Keycode;
 
-    pub const throttleUp = K.W;
-    pub const throttleDown = K.S;
-    pub const pitchUp = K.DOWN;
-    pub const pitchDown = K.UP;
-    pub const rollLeft = K.LEFT;
-    pub const rollRight = K.RIGHT;
-    pub const yawLeft = K.A;
-    pub const yawRight = K.D;
-    pub const exit = K.ESCAPE;
+    pub var throttle_up = K.W;
+    pub var throttle_down = K.S;
+    pub var pitch_up = K.DOWN;
+    pub var pitch_down = K.UP;
+    pub var roll_left = K.LEFT;
+    pub var roll_right = K.RIGHT;
+    pub var yaw_left = K.A;
+    pub var yaw_right = K.D;
+    pub var exit = K.ESCAPE;
 };
 
 var input_state = std.enums.EnumFieldStruct(std.meta.DeclEnum(InputMap), bool, false){};
@@ -728,7 +728,23 @@ fn processConfigLine(key: []const u8, value: []const u8) !void {
             const keycode = std.meta.stringToEnum(sapp.Keycode, val) orelse sapp.Keycode.INVALID;
 
             if (keycode == .INVALID) {
-                std.log.err("Bad keycode string for {s}", .{afterCat});
+                std.log.err("Bad keycode string for '{s}'. '{s}' key doesn't exist", .{ afterCat, val });
+            } else {
+                std.log.info("Keycode: {}", .{keycode});
+            }
+
+            const inputMapDecls = @typeInfo(InputMap).@"struct".decls;
+
+            var found = false;
+            inline for (inputMapDecls) |decl| {
+                if (std.mem.eql(u8, decl.name, afterCat)) {
+                    @field(InputMap, decl.name) = keycode;
+                    found = true;
+                }
+            }
+
+            if (!found) {
+                std.log.err("Binding '{s}' not found", .{afterCat});
             }
         }
     }
