@@ -648,30 +648,7 @@ pub const InputMap = struct {
     pub const exit = K.ESCAPE;
 };
 
-fn InputState() type {
-    const decls = @typeInfo(InputMap).@"struct".decls;
-    comptime var stateFields: [decls.len]std.builtin.Type.StructField = undefined;
-
-    for (decls, &stateFields) |decl, *field| {
-        field.* = .{
-            .name = decl.name,
-            .type = bool,
-            .alignment = @alignOf(bool),
-            .default_value_ptr = &false,
-            .is_comptime = false,
-        };
-    }
-
-    return @Type(.{ .@"struct" = .{
-        .fields = &stateFields,
-        .layout = .auto,
-        .decls = &.{},
-        .is_tuple = false,
-        .backing_integer = null,
-    } });
-}
-
-var input_state = InputState(){};
+var input_state = std.enums.EnumFieldStruct(std.meta.DeclEnum(InputMap), bool, false){};
 
 export fn input(event: ?*const sapp.Event) void {
     const ev = event.?;
