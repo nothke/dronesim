@@ -633,6 +633,55 @@ export fn frame() void {
 }
 
 // #INPUT
+
+pub const InputMap = struct {
+    const K = sapp.Keycode;
+
+    pub const throttleUp = K.W;
+    pub const throttleDown = K.S;
+    pub const pitchUp = K.UP;
+    pub const pitchDown = K.DOWN;
+    pub const rollRight = K.RIGHT;
+    pub const rollLeft = K.LEFT;
+    pub const yawRight = K.A;
+    pub const yawLeft = K.D;
+};
+
+const declsNum = @typeInfo(InputMap).@"struct".decls.len;
+
+fn InputState() type {
+    const decls = @typeInfo(InputMap).@"struct".decls;
+    comptime var stateFields: [decls.len]std.builtin.Type.StructField = undefined;
+
+    for (decls, &stateFields) |decl, *field| {
+        field.* = .{
+            .name = decl.name,
+            .type = bool,
+            .alignment = @alignOf(bool),
+            .default_value_ptr = &false,
+            .is_comptime = false,
+        };
+    }
+
+    return @Type(.{ .@"struct" = .{
+        .fields = &stateFields,
+        .layout = .auto,
+        .decls = &.{},
+        .is_tuple = false,
+        .backing_integer = null,
+    } });
+}
+
+const input_state2 = InputState(){};
+
+fn something() void {
+    @compileError(std.fmt.comptimePrint("{}", .{declsNum}));
+}
+
+// comptime {
+//     _ = something();
+// }
+
 const input_state = struct {
     var upPressed: bool = false;
     var downPressed: bool = false;
@@ -648,6 +697,8 @@ const input_state = struct {
 
 export fn input(event: ?*const sapp.Event) void {
     const ev = event.?;
+
+    _ = input_state2.throttleUp;
 
     if (simgui.handleEvent(ev.*))
         return;
