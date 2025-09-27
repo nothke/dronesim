@@ -53,10 +53,10 @@ const Axis = struct {
 };
 
 const AxisBindings = struct {
-    throttle: Axis = .{},
-    pitch: Axis = .{},
-    roll: Axis = .{},
-    yaw: Axis = .{},
+    throttle: Axis = .{ .id = 5 },
+    pitch: Axis = .{ .id = 4 },
+    roll: Axis = .{ .id = 3 },
+    yaw: Axis = .{ .id = 0 },
 };
 
 var axisBindings: AxisBindings = .{};
@@ -754,26 +754,36 @@ pub fn main() !void {
 
     // ini
     {
-        const file = try std.fs.cwd().openFile("config.ini", .{ .mode = .read_write });
-        defer file.close();
+        const fileOrErr = std.fs.cwd().openFile("config.ini", .{ .mode = .read_only });
 
-        var readBuff: [1024]u8 = undefined;
-        var reader = file.readerStreaming(&readBuff);
-        while (reader.interface.takeDelimiterExclusive('\n')) |line| {
-            std.log.info("PROCESSING LINE: '{s}'", .{line});
+        if (fileOrErr) |file| {
+            defer file.close();
 
-            if (line.len > 0 and line[0] == '#') {
-                {}
-            } else if (std.mem.indexOf(u8, line, "=")) |index| {
-                const keySlice = std.mem.trim(u8, line[0..index], " ");
-                const valueSlice = std.mem.trim(u8, line[(index + 1)..], " ");
-                std.log.info("key: '{s}' value: '{s}'", .{ keySlice, valueSlice });
+            var readBuff: [1024]u8 = undefined;
+            var reader = file.readerStreaming(&readBuff);
+            while (reader.interface.takeDelimiterExclusive('\n')) |line| {
+                std.log.info("PROCESSING LINE: '{s}'", .{line});
 
-                try processConfigLine(keySlice, valueSlice);
+                if (line.len > 0 and line[0] == '#') {
+                    {}
+                } else if (std.mem.indexOf(u8, line, "=")) |index| {
+                    const keySlice = std.mem.trim(u8, line[0..index], " ");
+                    const valueSlice = std.mem.trim(u8, line[(index + 1)..], " ");
+                    std.log.info("key: '{s}' value: '{s}'", .{ keySlice, valueSlice });
+
+                    try processConfigLine(keySlice, valueSlice);
+                }
+            } else |err| {
+                switch (err) {
+                    error.EndOfStream => {},
+                    else => return err,
+                }
             }
         } else |err| {
             switch (err) {
-                error.EndOfStream => {},
+                error.FileNotFound => {
+                    std.log.info("config.ini not found, using defaults", .{});
+                },
                 else => return err,
             }
         }
