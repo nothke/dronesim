@@ -694,18 +694,41 @@ export fn cleanup() void {
 fn processConfigLine(key: []const u8, value: []const u8) !void {
     const fields = std.meta.fields(AxisBindings);
 
-    if (std.mem.indexOf(u8, key, "_")) |index| {
-        const actionName = key[0..index];
+    if (std.mem.indexOf(u8, key, "_")) |cati| {
+        const categoryName = key[0..cati];
 
-        inline for (fields) |field| {
-            if (std.mem.eql(u8, actionName, field.name)) {
-                const suffix = key[index + 1 ..];
+        if (std.mem.eql(u8, categoryName, "axis")) {
+            const afterCat = key[cati + 1 ..];
 
-                if (std.mem.eql(u8, suffix, "axis")) {
-                    @field(axisBindings, field.name).id = try std.fmt.parseInt(u8, value, 10);
-                } else if (std.mem.eql(u8, suffix, "deadzone")) {
-                    @field(axisBindings, field.name).deadzone = try std.fmt.parseFloat(f32, value);
+            if (std.mem.indexOf(u8, afterCat, "_")) |axisi| {
+                const actionName = afterCat[0..axisi];
+
+                inline for (fields) |field| {
+                    if (std.mem.eql(u8, actionName, field.name)) {
+                        const suffix = afterCat[axisi + 1 ..];
+
+                        std.log.info("aftercat: '{s}', suffix: '{s}'", .{ afterCat, suffix });
+
+                        if (std.mem.eql(u8, suffix, "id")) {
+                            @field(axisBindings, field.name).id = try std.fmt.parseInt(u8, value, 10);
+                        } else if (std.mem.eql(u8, suffix, "deadzone")) {
+                            @field(axisBindings, field.name).deadzone = try std.fmt.parseFloat(f32, value);
+                        }
+                    }
                 }
+            }
+        } else if (std.mem.eql(u8, categoryName, "key")) {
+            const afterCat = key[cati + 1 ..];
+
+            std.log.info("found key: {s}", .{afterCat});
+
+            var buff = std.mem.zeroes([32]u8);
+            const val = std.ascii.upperString(&buff, value);
+
+            const keycode = std.meta.stringToEnum(sapp.Keycode, val) orelse sapp.Keycode.INVALID;
+
+            if (keycode == .INVALID) {
+                std.log.err("Bad keycode string for {s}", .{afterCat});
             }
         }
     }
@@ -723,7 +746,7 @@ pub fn main() !void {
         while (reader.interface.takeDelimiterExclusive('\n')) |line| {
             std.log.info("PROCESSING LINE: '{s}'", .{line});
 
-            if (line[0] == '#') {
+            if (line.len > 0 and line[0] == '#') {
                 {}
             } else if (std.mem.indexOf(u8, line, "=")) |index| {
                 const keySlice = std.mem.trim(u8, line[0..index], " ");
