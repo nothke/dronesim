@@ -47,6 +47,15 @@ const state = struct {
     var useGamepad = true;
 };
 
+const AxisBindings = struct {
+    throttleAxis: u8 = 0,
+    pitchAxis: u8 = 0,
+    rollAxis: u8 = 0,
+    yawAxis: u8 = 0,
+};
+
+var axisBindings: AxisBindings = .{};
+
 const WorldCube = struct {
     pos: vec3,
     size: vec3,
@@ -260,7 +269,7 @@ fn gamepadOnAxisMove(
     // _ = axisId;
     // _ = value;
     _ = lastValue;
-    if (axisId == 5)
+    if (axisId == axisBindings.throttleAxis)
         state.gamepadInputThrottle = value;
     // std.log.info("axis moved: {}, went from: {} to: {}", .{ axisId, lastValue, value });
 }
@@ -489,7 +498,7 @@ export fn frame() void {
 
     dUp = dUp.add(dForward.mul(-0.7)).norm();
 
-    // input
+    // #input
 
     if (state.iterationsToNextGamepadPoll > state.iterationsToWaitForGamepadPoll) {
         state.iterationsToNextGamepadPoll = 0;
@@ -507,9 +516,9 @@ export fn frame() void {
     if (state.useGamepad) {
         if (state.attachedGamepad) |gpad| {
             yAccel = (1 + state.gamepadInputThrottle) * 0.5; // gpad.axisStates[5]
-            yawAccel = axisInput(gpad.axisStates[0], 0.2);
-            rollAccel = axisInput(gpad.axisStates[3], 0.2);
-            pitchAccel = axisInput(gpad.axisStates[4], 0.2);
+            yawAccel = axisInput(gpad.axisStates[axisBindings.yawAxis], 0.2);
+            rollAccel = axisInput(gpad.axisStates[axisBindings.rollAxis], 0.2);
+            pitchAccel = axisInput(gpad.axisStates[axisBindings.pitchAxis], 0.2);
         }
     }
 
@@ -650,6 +659,7 @@ pub const InputMap = struct {
 
 var input_state = std.enums.EnumFieldStruct(std.meta.DeclEnum(InputMap), bool, false){};
 
+// #INPUT
 export fn input(event: ?*const sapp.Event) void {
     const ev = event.?;
 
@@ -676,6 +686,18 @@ export fn cleanup() void {
     phy.deinit();
 }
 
+fn processConfigLine(key: []const u8, value: []const u8) !void {
+    if (std.mem.eql(u8, key, "throttleAxis")) {
+        axisBindings.throttleAxis = try std.fmt.parseInt(u8, value, 10);
+    } else if (std.mem.eql(u8, key, "pitchAxis")) {
+        axisBindings.pitchAxis = try std.fmt.parseInt(u8, value, 10);
+    } else if (std.mem.eql(u8, key, "rollAxis")) {
+        axisBindings.rollAxis = try std.fmt.parseInt(u8, value, 10);
+    } else if (std.mem.eql(u8, key, "yawAxis")) {
+        axisBindings.yawAxis = try std.fmt.parseInt(u8, value, 10);
+    }
+}
+
 pub fn main() !void {
 
     // ini
@@ -694,6 +716,8 @@ pub fn main() !void {
                 const keySlice = std.mem.trim(u8, line[0..index], " ");
                 const valueSlice = std.mem.trim(u8, line[(index + 1)..], " ");
                 std.log.info("key: '{s}' value: '{s}'", .{ keySlice, valueSlice });
+
+                try processConfigLine(keySlice, valueSlice);
             }
         } else |err| {
             switch (err) {
