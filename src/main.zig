@@ -692,38 +692,40 @@ export fn cleanup() void {
     phy.deinit();
 }
 
+fn eql(left: []const u8, right: []const u8) bool {
+    return std.mem.eql(u8, left, right);
+}
+
+fn find(haystack: []const u8, needle: []const u8) ?usize {
+    return std.mem.indexOf(u8, haystack, needle);
+}
+
 fn processConfigLine(key: []const u8, value: []const u8) !void {
     const fields = std.meta.fields(AxisBindings);
 
-    const eql = std.mem.eql;
-    const find = std.mem.indexOf;
+    if (find(key, "_")) |cati| {
+        const category = key[0..cati];
+        const afterCat = key[cati + 1 ..];
 
-    if (find(u8, key, "_")) |cati| {
-        const categoryName = key[0..cati];
-
-        if (eql(u8, categoryName, "axis")) {
-            const afterCat = key[cati + 1 ..];
-
-            if (find(u8, afterCat, "_")) |axisi| {
+        if (eql(category, "axis")) {
+            if (find(afterCat, "_")) |axisi| {
                 const actionName = afterCat[0..axisi];
 
                 inline for (fields) |field| {
-                    if (eql(u8, actionName, field.name)) {
+                    if (eql(actionName, field.name)) {
                         const suffix = afterCat[axisi + 1 ..];
 
                         // std.log.info("aftercat: '{s}', suffix: '{s}'", .{ afterCat, suffix });
 
-                        if (eql(u8, suffix, "id")) {
+                        if (eql(suffix, "id")) {
                             @field(axisBindings, field.name).id = try std.fmt.parseInt(u8, value, 10);
-                        } else if (eql(u8, suffix, "deadzone")) {
+                        } else if (eql(suffix, "deadzone")) {
                             @field(axisBindings, field.name).deadzone = try std.fmt.parseFloat(f32, value);
                         }
                     }
                 }
             }
-        } else if (eql(u8, categoryName, "key")) {
-            const afterCat = key[cati + 1 ..];
-
+        } else if (eql(category, "key")) {
             // std.log.info("found key: {s}", .{afterCat});
 
             var buff = std.mem.zeroes([32]u8);
@@ -739,7 +741,7 @@ fn processConfigLine(key: []const u8, value: []const u8) !void {
 
             var found = false;
             inline for (inputMapDecls) |decl| {
-                if (eql(u8, decl.name, afterCat)) {
+                if (eql(decl.name, afterCat)) {
                     @field(InputMap, decl.name) = keycode;
                     found = true;
                 }
@@ -748,7 +750,7 @@ fn processConfigLine(key: []const u8, value: []const u8) !void {
             if (!found) {
                 std.log.err("Binding '{s}' not found", .{afterCat});
             }
-        } else if(eql(u9))
+        }
     }
 }
 
