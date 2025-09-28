@@ -10,6 +10,7 @@ const std = @import("std");
 const phy = @import("zphysics");
 const ig = @import("cimgui");
 const simgui = sokol.imgui;
+const ini = @import("ini.zig");
 
 const c = @cImport({
     @cInclude("Gamepad.h");
@@ -37,7 +38,7 @@ const state = struct {
     var cubesBuffer: [max_cubes]WorldCube = undefined;
     var cubes: std.ArrayListUnmanaged(WorldCube) = .{};
 
-    var attachedGamepad: ?*c.struct_Gamepad_device = null;
+    var attachedGamepad: ?*c.struct_Gamepad_device = null; //
 
     var gamepadInputThrottle: f32 = -1;
 
@@ -707,7 +708,7 @@ fn processConfigLine(key: []const u8, value: []const u8) !void {
                     if (std.mem.eql(u8, actionName, field.name)) {
                         const suffix = afterCat[axisi + 1 ..];
 
-                        std.log.info("aftercat: '{s}', suffix: '{s}'", .{ afterCat, suffix });
+                        // std.log.info("aftercat: '{s}', suffix: '{s}'", .{ afterCat, suffix });
 
                         if (std.mem.eql(u8, suffix, "id")) {
                             @field(axisBindings, field.name).id = try std.fmt.parseInt(u8, value, 10);
@@ -720,7 +721,7 @@ fn processConfigLine(key: []const u8, value: []const u8) !void {
         } else if (std.mem.eql(u8, categoryName, "key")) {
             const afterCat = key[cati + 1 ..];
 
-            std.log.info("found key: {s}", .{afterCat});
+            // std.log.info("found key: {s}", .{afterCat});
 
             var buff = std.mem.zeroes([32]u8);
             const val = std.ascii.upperString(&buff, value);
@@ -729,8 +730,6 @@ fn processConfigLine(key: []const u8, value: []const u8) !void {
 
             if (keycode == .INVALID) {
                 std.log.err("Bad keycode string for '{s}'. '{s}' key doesn't exist", .{ afterCat, val });
-            } else {
-                std.log.info("Keycode: {}", .{keycode});
             }
 
             const inputMapDecls = @typeInfo(InputMap).@"struct".decls;
@@ -759,25 +758,12 @@ pub fn main() !void {
         if (fileOrErr) |file| {
             defer file.close();
 
-            var readBuff: [1024]u8 = undefined;
-            var reader = file.readerStreaming(&readBuff);
-            while (reader.interface.takeDelimiterExclusive('\n')) |line| {
-                std.log.info("PROCESSING LINE: '{s}'", .{line});
+            var buff: [1024]u8 = undefined;
+            var reader = file.readerStreaming(&buff);
+            var iniIter = ini.EntryReader{ .reader = &reader.interface };
 
-                if (line.len > 0 and line[0] == '#') {
-                    {}
-                } else if (std.mem.indexOf(u8, line, "=")) |index| {
-                    const keySlice = std.mem.trim(u8, line[0..index], " ");
-                    const valueSlice = std.mem.trim(u8, line[(index + 1)..], " ");
-                    std.log.info("key: '{s}' value: '{s}'", .{ keySlice, valueSlice });
-
-                    try processConfigLine(keySlice, valueSlice);
-                }
-            } else |err| {
-                switch (err) {
-                    error.EndOfStream => {},
-                    else => return err,
-                }
+            while (iniIter.next()) |res| {
+                try processConfigLine(res.key, res.value);
             }
         } else |err| {
             switch (err) {
