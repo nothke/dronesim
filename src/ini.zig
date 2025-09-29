@@ -7,6 +7,18 @@ const Entry = struct {
 
 const whitespace = " \t\r";
 
+pub fn extractEntry(trimmed_line: []const u8) ?Entry {
+    if (std.mem.indexOf(u8, trimmed_line, "=")) |index| {
+        const keySlice = std.mem.trim(u8, trimmed_line[0..index], whitespace);
+        const valueSlice = std.mem.trim(u8, trimmed_line[(index + 1)..], whitespace);
+
+        // std.log.info("key: '{s}' value: '{s}'", .{ keySlice, valueSlice });
+        return Entry{ .key = keySlice, .value = valueSlice };
+    }
+
+    return null;
+}
+
 pub const EntryReader = struct {
     reader: *std.io.Reader,
 
@@ -25,12 +37,8 @@ pub const EntryReader = struct {
                 // ignore sections (for now)
             } else if (lineTr[0] == '[') {
                 {}
-            } else if (std.mem.indexOf(u8, lineTr, "=")) |index| {
-                const keySlice = std.mem.trim(u8, lineTr[0..index], whitespace);
-                const valueSlice = std.mem.trim(u8, lineTr[(index + 1)..], whitespace);
-
-                // std.log.info("key: '{s}' value: '{s}'", .{ keySlice, valueSlice });
-                return Entry{ .key = keySlice, .value = valueSlice };
+            } else if (extractEntry(lineTr)) |entry| {
+                return entry;
             }
         } else |err| {
             switch (err) {
@@ -42,13 +50,37 @@ pub const EntryReader = struct {
 };
 
 test "line_iterator" {
-    var buff = [1024]u8{"firstLine=4\nsecondLine =    6"};
-    var stream = std.io.fixedBufferStream(&buff);
-    var ini = EntryReader{ .reader = stream.reader() };
+    const string =
+        \\firstLine=4
+        \\secondLine   =  6
+        \\   [section]
+        \\# comment = even if it has a = sign
+        \\nothing = at all
+        \\
+        \\
+    .*;
 
-    while (ini.next()) |res| {
-        std.testing.expectEqual(res.key, "firstLine");
-        std.testing.expectEqual(res.value, 4);
-        return;
+    var reader = std.io.Reader.fixed(&string);
+    var ini = EntryReader{ .reader = &reader };
+
+    const eql = std.testing.expectEqualStrings;
+
+    var i: i32 = 0;
+    while (ini.next()) |res| : (i += 1) {
+        switch (i) {
+            0 => {
+                try eql(res.key, "firstLine");
+                try eql(res.value, "4");
+            },
+            1 => {
+                try eql(res.key, "secondLine");
+                try eql(res.value, "6");
+            },
+            2 => {
+                try eql(res.key, "nothing");
+                try eql(res.value, "at all");
+            },
+            else => {},
+        }
     }
 }
