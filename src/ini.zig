@@ -5,7 +5,7 @@ const Entry = struct {
     value: []const u8,
 };
 
-const whitespace = " \t";
+const whitespace = " \t\r";
 
 pub const EntryReader = struct {
     reader: *std.io.Reader,
