@@ -62,6 +62,8 @@ pub fn saveStruct(strc: anytype, writer: *std.io.Writer) !usize {
             try writer.printIntAny(@field(strc, field.name), 10, .lower, .{});
         } else if (info == .float) {
             try writer.printFloat(@field(strc, field.name), .{});
+        } else if (info == .pointer and info.pointer.size == .slice) {
+            _ = try writer.write(@field(strc, field.name));
         } else {
             @compileError("Type not supported");
         }
@@ -79,11 +81,12 @@ test "write_struct" {
     const strc = struct {
         num: i32 = 8,
         flt: f32 = 33.4,
+        str: []const u8 = "something",
     }{};
 
     const len = try saveStruct(strc, &writer);
 
-    try std.testing.expectEqualStrings("num = 8\nflt = 33.4\n", buff[0..len]);
+    try std.testing.expectEqualStrings("num = 8\nflt = 33.4\nstr = something\n", buff[0..len]);
 }
 
 test "line_iterator" {
