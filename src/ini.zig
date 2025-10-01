@@ -74,6 +74,61 @@ pub fn saveStruct(strc: anytype, writer: *std.io.Writer) !usize {
     return writer.end - start;
 }
 
+pub fn loadStruct(strc: anytype, reader: *std.io.Reader) !void {
+    var iter = EntryReader{ .reader = reader };
+
+    if (@typeInfo(@TypeOf(strc)) != .pointer or @typeInfo(@TypeOf(strc.*)) != .@"struct")
+        @compileError("strc must be a pointer to a mutable struct");
+
+    if (@typeInfo(@TypeOf(strc)).pointer.is_const)
+        @compileError("strc must be mutable");
+
+    while (iter.next()) |entry| {
+        inline for (std.meta.fields(@TypeOf(strc.*))) |field| {
+            if (std.mem.eql(u8, field.name, entry.key)) {
+                const info = @typeInfo(field.type);
+
+                if (info == .int) {
+                    @field(strc.*, field.name) = try std.fmt.parseInt(field.type, entry.value, 10);
+                } else if (info == .float) {
+                    @field(strc.*, field.name) = try std.fmt.parseFloat(field.type, entry.value);
+                } else if (info == .pointer and info.pointer.size == .slice) {
+                    @compileError("Support for string slices is problematic. Not implemented yet.");
+                    //@field(strc, field.name)
+                } else {
+                    @compileError("Type not supported");
+                }
+            }
+        }
+    }
+}
+
+test "read_struct" {
+    const string =
+        \\firstLine=4
+        \\secondLine   =  6
+        \\   [section]
+        \\# comment = even if it has a = sign
+        \\nothing = at all
+        \\
+        \\
+    .*;
+
+    var strc = struct {
+        firstLine: i32 = 8,
+        secondLine: f32 = 33.4,
+        //nothing: []const u8 = "",
+    }{};
+
+    var reader = std.io.Reader.fixed(&string);
+
+    try loadStruct(&strc, &reader);
+
+    try std.testing.expectEqual(strc.firstLine, 4);
+    try std.testing.expectEqual(strc.secondLine, 6);
+    //try std.testing.expectEqualStrings(strc.nothing, "at all");
+}
+
 test "write_struct" {
     var buff = std.mem.zeroes([1024]u8);
     var writer = std.io.Writer.fixed(&buff);
