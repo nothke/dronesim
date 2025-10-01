@@ -49,6 +49,43 @@ pub const EntryReader = struct {
     }
 };
 
+/// returns length of string
+pub fn saveStruct(strc: anytype, writer: *std.io.Writer) !usize {
+    const start = writer.end;
+    inline for (std.meta.fields(@TypeOf(strc))) |field| {
+        _ = try writer.write(field.name);
+        _ = try writer.write(" = ");
+
+        const info = @typeInfo(field.type);
+
+        if (info == .int) {
+            try writer.printIntAny(@field(strc, field.name), 10, .lower, .{});
+        } else if (info == .float) {
+            try writer.printFloat(@field(strc, field.name), .{});
+        } else {
+            @compileError("Type not supported");
+        }
+
+        _ = try writer.write("\n");
+    }
+
+    return writer.end - start;
+}
+
+test "write_struct" {
+    var buff = std.mem.zeroes([1024]u8);
+    var writer = std.io.Writer.fixed(&buff);
+
+    const strc = struct {
+        num: i32 = 8,
+        flt: f32 = 33.4,
+    }{};
+
+    const len = try saveStruct(strc, &writer);
+
+    try std.testing.expectEqualStrings("num = 8\nflt = 33.4\n", buff[0..len]);
+}
+
 test "line_iterator" {
     const string =
         \\firstLine=4
