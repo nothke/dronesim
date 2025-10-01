@@ -48,6 +48,8 @@ const state = struct {
     var useGamepad = true;
 };
 
+const configPath = "config.ini";
+
 const Axis = struct {
     id: u8 = 0,
     deadzone: f32 = 0.2,
@@ -754,11 +756,17 @@ fn processConfigLine(key: []const u8, value: []const u8) !void {
     }
 }
 
+const testStruct = struct {
+    fav: f32 = 3.4,
+    fov: f32 = 10,
+    huv: i32 = 3,
+}{};
+
 pub fn main() !void {
 
     // ini
     {
-        const fileOrErr = std.fs.cwd().openFile("config.ini", .{ .mode = .read_only });
+        const fileOrErr = std.fs.cwd().openFile(configPath, .{});
 
         if (fileOrErr) |file| {
             defer file.close();
@@ -773,10 +781,25 @@ pub fn main() !void {
         } else |err| {
             switch (err) {
                 error.FileNotFound => {
-                    std.log.info("config.ini not found, using defaults", .{});
+                    std.log.info(configPath ++ " not found, using defaults", .{});
                 },
                 else => return err,
             }
+        }
+    }
+
+    {
+        if (std.fs.cwd().createFile("test.ini", .{})) |file| {
+            defer file.close();
+
+            var buff = std.mem.zeroes([1024]u8);
+            var writer = file.writer(&buff);
+
+            _ = try ini.saveStruct(testStruct, &writer.interface);
+
+            try writer.interface.flush();
+        } else |err| {
+            return err;
         }
     }
 
