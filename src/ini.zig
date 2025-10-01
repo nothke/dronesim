@@ -74,14 +74,17 @@ pub fn saveStruct(strc: anytype, writer: *std.io.Writer) !usize {
     return writer.end - start;
 }
 
-pub fn loadStruct(strc: anytype, reader: *std.io.Reader) !void {
+/// An allocator is used to store string values read from a file.
+/// If you do not have any string values, you can set it to null.
+/// The function doesn't return allocation pointers, so use an allocator that you can easily free in bulk like an arena.
+pub fn loadStruct(strc: anytype, reader: *std.io.Reader, allocator: ?std.mem.Allocator) !void {
     var iter = EntryReader{ .reader = reader };
 
     if (@typeInfo(@TypeOf(strc)) != .pointer or @typeInfo(@TypeOf(strc.*)) != .@"struct")
-        @compileError("strc must be a pointer to a mutable struct");
+        @compileError("Struct must be a pointer to a mutable struct");
 
     if (@typeInfo(@TypeOf(strc)).pointer.is_const)
-        @compileError("strc must be mutable");
+        @compileError("Struct must be mutable");
 
     while (iter.next()) |entry| {
         inline for (std.meta.fields(@TypeOf(strc.*))) |field| {
@@ -93,7 +96,11 @@ pub fn loadStruct(strc: anytype, reader: *std.io.Reader) !void {
                 } else if (info == .float) {
                     @field(strc.*, field.name) = try std.fmt.parseFloat(field.type, entry.value);
                 } else if (info == .pointer and info.pointer.size == .slice) {
-                    @compileError("Support for string slices is problematic. Not implemented yet.");
+                    if (allocator) |alloc| {
+                        @field(strc.*, field.name) = try alloc.dupeZ(u8, entry.value);
+                    } else {
+                        return error.AllocatorCantBeNull;
+                    }
                     //@field(strc, field.name)
                 } else {
                     @compileError("Type not supported");
@@ -117,16 +124,18 @@ test "read_struct" {
     var strc = struct {
         firstLine: i32 = 8,
         secondLine: f32 = 33.4,
-        //nothing: []const u8 = "",
+        nothing: []const u8 = "",
     }{};
 
     var reader = std.io.Reader.fixed(&string);
 
-    try loadStruct(&strc, &reader);
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    try loadStruct(&strc, &reader, arena.allocator());
+    defer arena.deinit();
 
     try std.testing.expectEqual(strc.firstLine, 4);
     try std.testing.expectEqual(strc.secondLine, 6);
-    //try std.testing.expectEqualStrings(strc.nothing, "at all");
+    try std.testing.expectEqualStrings(strc.nothing, "at all");
 }
 
 test "write_struct" {
