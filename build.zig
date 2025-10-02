@@ -22,27 +22,32 @@ pub fn build(b: *std.Build) void {
     dep_sokol.artifact("sokol_clib").addIncludePath(dep_cimgui.path(cimgui_conf.include_dir));
 
     const dep_zgltf = b.dependency("zgltf", .{});
+    const dep_zigimg = b.dependency("zigimg", .{ .target = target, .optimize = optimize });
 
     const exe = b.addExecutable(.{
         .name = "dronesim",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/main.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{ .{
+        .root_module = b.createModule(.{ .root_source_file = b.path("src/main.zig"), .target = target, .optimize = optimize, .imports = &.{
+            .{
                 .name = "sokol",
                 .module = dep_sokol.module("sokol"),
-            }, .{
+            },
+            .{
                 .name = cimgui_conf.module_name,
                 .module = dep_cimgui.module(cimgui_conf.module_name),
-            }, .{
+            },
+            .{
                 .name = "zphysics",
                 .module = dep_zphysics.module("root"),
-            }, .{
+            },
+            .{
                 .name = "zgltf",
                 .module = dep_zgltf.module("zgltf"),
-            } },
-        }),
+            },
+            .{
+                .name = "zigimg",
+                .module = dep_zigimg.module("zigimg"),
+            },
+        } }),
     });
 
     exe.linkLibrary(dep_zphysics.artifact("joltc"));

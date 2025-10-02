@@ -12,6 +12,7 @@ const ig = @import("cimgui");
 const simgui = sokol.imgui;
 const ini = @import("ini.zig");
 const zgltf = @import("zgltf");
+const zigimg = @import("zigimg");
 
 const c = @cImport({
     @cInclude("Gamepad.h");
@@ -332,6 +333,11 @@ export fn init() void {
     gltf.parse(gltf_buff) catch unreachable;
 
     std.log.info("image: {}", .{gltf.data.images.len});
+
+    const gltf_image = gltf.data.images[0];
+    const image = zigimg.Image.fromMemory(gpa_alloc, gltf_image.data.?) catch unreachable;
+
+    std.log.info("image width {}, height {}, pixel format {}", .{ image.width, image.height, image.pixelFormat() });
 
     // const image = gltf.data.images[0];
     // std.log.info("image.data {s} {s}", .{ image.data orelse "null", image.uri orelse "null" });

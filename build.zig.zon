@@ -24,6 +24,10 @@
             .url = "git+https://github.com/kooparse/zgltf.git#fc3bb36672fb71f05e0226160051e7104b0c6865",
             .hash = "zgltf-0.1.0-sX6QArASAgBCGBz2QR-lv48sEuXhENvQyi3y8weqJzwZ",
         },
+        .zigimg = .{
+            .url = "git+https://github.com/zigimg/zigimg.git#d7717b3617d58160635623fe86d4bf86065498e0",
+            .hash = "zigimg-0.1.0-8_eo2vBrFQAvZmO9NzDP85_qC5JFksuMdyI_KMMEr4bq",
+        },
     },
     .paths = .{
         "build.zig",
