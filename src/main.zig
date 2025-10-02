@@ -480,13 +480,7 @@ fn axisInput(rawInput: f32, deadzone: f32) f32 {
 }
 
 fn drawCube(vp: *const mat4, pos: vec3, size: vec3) void {
-    // TODO: Move to math
-    const scale = mat4{ .m = .{
-        .{ size.x, 0, 0, 0 },
-        .{ 0, size.y, 0, 0 },
-        .{ 0, 0, size.z, 0 },
-        .{ 0, 0, 0, 1 },
-    } };
+    const scale = mat4.scale(size);
 
     const model = mat4.translate(pos).mul(scale);
 
@@ -588,13 +582,7 @@ export fn frame() void {
 
             speedKmH = vec3.fromArr(body.getLinearVelocity()).len() * 3.6;
 
-            // TODO: Move to mat4
-            const rotMat = mat4{ .m = .{
-                .{ r[0], r[1], r[2], 0 },
-                .{ r[3], r[4], r[5], 0 },
-                .{ r[6], r[7], r[8], 0 },
-                .{ 0, 0, 0, 1 },
-            } };
+            const rotMat = mat4.rotateFromMat3(&r);
 
             v = v.mul(rotMat);
             v = v.mul(mat4.translate(vec3.new(dpos[0], dpos[1], dpos[2]).mul(-1)));

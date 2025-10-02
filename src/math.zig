@@ -181,12 +181,30 @@ pub const Mat4 = extern struct {
         return res;
     }
 
+    pub fn rotateFromMat3(rot: []const f32) Mat4 {
+        return .{ .m = .{
+            .{ rot[0], rot[1], rot[2], 0 },
+            .{ rot[3], rot[4], rot[5], 0 },
+            .{ rot[6], rot[7], rot[8], 0 },
+            .{ 0, 0, 0, 1 },
+        } };
+    }
+
     pub fn translate(translation: Vec3) Mat4 {
         var res = Mat4.identity();
         res.m[3][0] = translation.x;
         res.m[3][1] = translation.y;
         res.m[3][2] = translation.z;
         return res;
+    }
+
+    pub fn scale(size: Vec3) Mat4 {
+        return .{ .m = .{
+            .{ size.x, 0, 0, 0 },
+            .{ 0, size.y, 0, 0 },
+            .{ 0, 0, size.z, 0 },
+            .{ 0, 0, 0, 1 },
+        } };
     }
 };
 
