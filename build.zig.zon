@@ -20,6 +20,10 @@
             .url = "git+https://github.com/nothke/libstem-gamepad-zig.git#1170e67f21053e263f0420848071471a8d0f16b9",
             .hash = "libstem_gamepad-1.4.2-zoH3k4vVAQAz3t8CwTeC4fCI4mGEUxw8jzMNvemNXerE",
         },
+        .zgltf = .{
+            .url = "git+https://github.com/kooparse/zgltf.git#fc3bb36672fb71f05e0226160051e7104b0c6865",
+            .hash = "zgltf-0.1.0-sX6QArASAgBCGBz2QR-lv48sEuXhENvQyi3y8weqJzwZ",
+        },
     },
     .paths = .{
         "build.zig",

@@ -11,6 +11,7 @@ const phy = @import("zphysics");
 const ig = @import("cimgui");
 const simgui = sokol.imgui;
 const ini = @import("ini.zig");
+const zgltf = @import("zgltf");
 
 const c = @cImport({
     @cInclude("Gamepad.h");
@@ -47,6 +48,8 @@ const state = struct {
     const iterationsToWaitForGamepadPoll = 60;
 
     var useGamepad = true;
+
+    var gpa: std.heap.GeneralPurposeAllocator(.{}) = undefined;
 };
 
 var configData = struct {
@@ -307,6 +310,33 @@ export fn init() void {
     c.Gamepad_deviceRemoveFunc(gamepadOnDeviceDetached, null);
     c.Gamepad_axisMoveFunc(gamepadOnAxisMove, null);
     c.Gamepad_init();
+
+    // gltf
+
+    state.gpa = .init;
+    const gpa_alloc = state.gpa.allocator();
+
+    var gltf = zgltf.Gltf.init(gpa_alloc);
+    defer gltf.deinit();
+
+    const gltf_buff = std.fs.cwd().readFileAllocOptions(
+        gpa_alloc,
+        "art/testcubes.glb",
+        1024 * 1024,
+        null,
+        .@"4",
+        null,
+    ) catch unreachable;
+    defer gpa_alloc.free(gltf_buff);
+
+    gltf.parse(gltf_buff) catch unreachable;
+
+    std.log.info("image: {}", .{gltf.data.images.len});
+
+    // const image = gltf.data.images[0];
+    // std.log.info("image.data {s} {s}", .{ image.data orelse "null", image.uri orelse "null" });
+
+    // Create a cube mesh
 
     const cs: f32 = 1;
 
@@ -688,7 +718,10 @@ export fn input(event: ?*const sapp.Event) void {
         sapp.requestQuit();
 }
 
+// MARK: cleanup()
 export fn cleanup() void {
+    _ = state.gpa.deinit();
+
     sg.shutdown();
     phy.deinit();
 }

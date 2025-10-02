@@ -21,26 +21,27 @@ pub fn build(b: *std.Build) void {
     const cimgui_conf = cimgui.getConfig(false);
     dep_sokol.artifact("sokol_clib").addIncludePath(dep_cimgui.path(cimgui_conf.include_dir));
 
+    const dep_zgltf = b.dependency("zgltf", .{});
+
     const exe = b.addExecutable(.{
         .name = "dronesim",
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/main.zig"),
             .target = target,
             .optimize = optimize,
-            .imports = &.{
-                .{
-                    .name = "sokol",
-                    .module = dep_sokol.module("sokol"),
-                },
-                .{
-                    .name = cimgui_conf.module_name,
-                    .module = dep_cimgui.module(cimgui_conf.module_name),
-                },
-                .{
-                    .name = "zphysics",
-                    .module = dep_zphysics.module("root"),
-                },
-            },
+            .imports = &.{ .{
+                .name = "sokol",
+                .module = dep_sokol.module("sokol"),
+            }, .{
+                .name = cimgui_conf.module_name,
+                .module = dep_cimgui.module(cimgui_conf.module_name),
+            }, .{
+                .name = "zphysics",
+                .module = dep_zphysics.module("root"),
+            }, .{
+                .name = "zgltf",
+                .module = dep_zgltf.module("zgltf"),
+            } },
         }),
     });
 
