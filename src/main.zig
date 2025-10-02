@@ -781,7 +781,7 @@ fn loadConfig() !void {
     } else |err| {
         switch (err) {
             error.FileNotFound => {
-                std.log.info(bindingsPath ++ " not found, using defaults", .{});
+                std.log.info(configPath ++ " not found, using defaults", .{});
             },
             else => return err,
         }
