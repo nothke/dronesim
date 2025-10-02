@@ -19,6 +19,7 @@ const c = @cImport({
 const max_cubes = 1024;
 const max_bodies = 1024;
 
+// MARK: state
 const state = struct {
     const drone = struct {
         var pos: vec3 = vec3.zero();
@@ -48,7 +49,16 @@ const state = struct {
     var useGamepad = true;
 };
 
+var configData = struct {
+    thrustForceMult: f32 = 200,
+    rollPitchTorqueMult: f32 = 0.5,
+    yawTorqueMult: f32 = 0.1,
+    dragMult: f32 = 2.0,
+    angularDragMult: f32 = 0.5,
+}{};
+
 const configPath = "config.ini";
+const bindingsPath = "bindings.ini";
 
 const Axis = struct {
     id: u8 = 0,
@@ -293,8 +303,6 @@ export fn init() void {
         .logger = .{ .func = slog.func },
     });
 
-    // gamepad input
-
     c.Gamepad_deviceAttachFunc(gamepadOnDeviceAttached, null);
     c.Gamepad_deviceRemoveFunc(gamepadOnDeviceDetached, null);
     c.Gamepad_axisMoveFunc(gamepadOnAxisMove, null);
@@ -535,7 +543,7 @@ export fn frame() void {
     rollAccel = std.math.clamp(rollAccel, -1, 1);
     yawAccel = std.math.clamp(yawAccel, -1, 1);
 
-    // physics
+    // physics #PHYSICSUPDATE
 
     const mutBodies = state.physics_system.getBodiesMutUnsafe();
 
@@ -544,21 +552,24 @@ export fn frame() void {
 
         if (body.id == state.droneBodyId) {
             // #DRONEUPDATE
-            const thrustForceMult = 200;
-            const rollPitchTorqueMult = 0.5;
-            const yawTorqueMult = 0.1;
-
-            const upForce = vec3.mul(dUp, yAccel * thrustForceMult);
+            const upForce = vec3.mul(dUp, yAccel * configData.thrustForceMult);
             body.addForce(upForce.asArr());
             body.addTorque(.{
-                -rollPitchTorqueMult * pitchAccel,
-                yawTorqueMult * yawAccel,
-                rollPitchTorqueMult * rollAccel,
+                -configData.rollPitchTorqueMult * pitchAccel,
+                configData.yawTorqueMult * yawAccel,
+                configData.rollPitchTorqueMult * rollAccel,
             });
 
-            const dragMult: f32 = 2.0;
-            const angularDragMult: f32 = 0.5;
-            body.applyBuoyancyImpulse(.{ 0, body.position[1] + 100, 0 }, .{ 0, 1, 0 }, 0.01, dragMult, angularDragMult, .{ 0, 0, 0 }, .{ 0, -9.81, 0 }, dt);
+            body.applyBuoyancyImpulse(
+                .{ 0, body.position[1] + 100, 0 },
+                .{ 0, 1, 0 },
+                0.01,
+                configData.dragMult,
+                configData.angularDragMult,
+                .{ 0, 0, 0 },
+                .{ 0, -9.81, 0 },
+                dt,
+            );
         }
     }
 
@@ -667,7 +678,7 @@ pub const InputMap = struct {
 
 var input_state = std.enums.EnumFieldStruct(std.meta.DeclEnum(InputMap), bool, false){};
 
-// #INPUT
+// #INPUT MARK: input
 export fn input(event: ?*const sapp.Event) void {
     const ev = event.?;
 
@@ -756,17 +767,44 @@ fn processConfigLine(key: []const u8, value: []const u8) !void {
     }
 }
 
-const testStruct = struct {
-    fav: f32 = 3.4,
-    fov: f32 = 10,
-    huv: i32 = 3,
-}{};
+fn saveConfig() !void {
+    if (std.fs.cwd().createFile(configPath, .{})) |file| {
+        defer file.close();
+
+        var buff = std.mem.zeroes([1024]u8);
+        var writer = file.writer(&buff);
+
+        _ = try ini.saveStruct(configData, &writer.interface);
+
+        try writer.interface.flush();
+    } else |err| {
+        return err;
+    }
+}
+
+fn loadConfig() !void {
+    if (std.fs.cwd().openFile(configPath, .{})) |file| {
+        defer file.close();
+
+        var buff = std.mem.zeroes([1024]u8);
+        var reader = file.reader(&buff);
+
+        try ini.loadStruct(&configData, &reader.interface, null);
+    } else |err| {
+        switch (err) {
+            error.FileNotFound => {
+                std.log.info(bindingsPath ++ " not found, using defaults", .{});
+            },
+            else => return err,
+        }
+    }
+}
 
 pub fn main() !void {
 
-    // ini
+    // bindings ini
     {
-        const fileOrErr = std.fs.cwd().openFile(configPath, .{});
+        const fileOrErr = std.fs.cwd().openFile(bindingsPath, .{});
 
         if (fileOrErr) |file| {
             defer file.close();
@@ -781,27 +819,14 @@ pub fn main() !void {
         } else |err| {
             switch (err) {
                 error.FileNotFound => {
-                    std.log.info(configPath ++ " not found, using defaults", .{});
+                    std.log.info(bindingsPath ++ " not found, using defaults", .{});
                 },
                 else => return err,
             }
         }
     }
 
-    {
-        if (std.fs.cwd().createFile("test.ini", .{})) |file| {
-            defer file.close();
-
-            var buff = std.mem.zeroes([1024]u8);
-            var writer = file.writer(&buff);
-
-            _ = try ini.saveStruct(testStruct, &writer.interface);
-
-            try writer.interface.flush();
-        } else |err| {
-            return err;
-        }
-    }
+    try loadConfig();
 
     sapp.run(.{
         .init_cb = init,
