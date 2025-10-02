@@ -83,7 +83,7 @@ const WorldCube = struct {
 // a vertex struct with position, color and uv-coords
 const Vertex = extern struct { x: f32, y: f32, z: f32, color: u32, u: i16, v: i16 };
 
-// Physics structs
+// Physics structs MARK: physics
 
 const object_layers = struct {
     const non_moving: phy.ObjectLayer = 0;
@@ -292,7 +292,7 @@ fn gamepadOnAxisMove(
     // std.log.info("axis moved: {}, went from: {} to: {}", .{ axisId, lastValue, value });
 }
 
-// #INIT
+// #INIT MARK: init()
 export fn init() void {
     sg.setup(.{
         .environment = sglue.environment(),
@@ -490,7 +490,7 @@ fn drawCube(vp: *const mat4, pos: vec3, size: vec3) void {
     sg.draw(0, 36, 1);
 }
 
-// #LOOP
+// #LOOP MARK: frame()
 export fn frame() void {
     simgui.newFrame(.{
         .width = sapp.width(),
@@ -666,7 +666,7 @@ pub const InputMap = struct {
 
 var input_state = std.enums.EnumFieldStruct(std.meta.DeclEnum(InputMap), bool, false){};
 
-// #INPUT MARK: input
+// #INPUT MARK: input()
 export fn input(event: ?*const sapp.Event) void {
     const ev = event.?;
 
@@ -788,6 +788,7 @@ fn loadConfig() !void {
     }
 }
 
+// MARK: main()
 pub fn main() !void {
 
     // bindings ini
