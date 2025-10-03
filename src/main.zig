@@ -296,9 +296,16 @@ fn gamepadOnAxisMove(
     // std.log.info("axis moved: {}, went from: {} to: {}", .{ axisId, lastValue, value });
 }
 
+// MARK: #GLTF
+
+const Primitive = struct {
+    index_count: u32 = 0,
+};
+
 const GLTFState = struct {
     var buff: []align(4) const u8 = undefined;
 
+    var primitive: Primitive = .{};
     var image: zigimg.Image = undefined;
     var image_view: sg.View = undefined;
 };
@@ -373,12 +380,12 @@ fn loadGLTF() !void {
 
                 const vertexCount: usize = @intCast(accessor.count);
 
-                //try vertices.ensureTotalCapacity(vertexCount);
+                try vertices.ensureTotalCapacity(alloc, vertexCount);
 
                 std.log.info("    -- VERTICES count: {}", .{vertexCount});
 
                 for (0..vertexCount) |vertexIndex| {
-                    try vertices.append(alloc, .{
+                    vertices.appendAssumeCapacity(.{
                         .x = view[vertexIndex * 3 + 0],
                         .y = view[vertexIndex * 3 + 1],
                         .z = view[vertexIndex * 3 + 2],
@@ -403,7 +410,7 @@ fn loadGLTF() !void {
 
                 for (vertices.items, 0..) |*vertex, i| {
                     vertex.u = @intFromFloat(view[i * 2 + 0] * 32767);
-                    vertex.v = @intFromFloat(1 - view[i * 2 + 1] * 32767);
+                    vertex.v = @intFromFloat(view[i * 2 + 1] * 32767);
                 }
             },
             else => {},
@@ -416,13 +423,21 @@ fn loadGLTF() !void {
 
     const accessor = gltf.data.accessors[primitive.indices.?];
     if (accessor.component_type == .unsigned_short) {
-        const intView = try gltf.getDataFromBufferView(u16, alloc, accessor, gltf.glb_binary.?);
+        const view = try gltf.getDataFromBufferView(u16, alloc, accessor, gltf.glb_binary.?);
+        try indices.ensureTotalCapacity(alloc, view.len);
 
-        std.log.info("    -- INDICES: count: {}, triangles: {}, type: short", .{ intView.len, @divExact(intView.len, 3) });
+        std.log.info("    -- INDICES: count: {}, triangles: {}, type: short", .{ view.len, @divExact(view.len, 3) });
 
-        for (intView) |vi| {
-            try indices.append(alloc, @intCast(vi));
+        var i: usize = 0;
+        while (i < view.len) : (i += 3) {
+            indices.appendAssumeCapacity(@intCast(view[i + 1]));
+            indices.appendAssumeCapacity(@intCast(view[i + 0]));
+            indices.appendAssumeCapacity(@intCast(view[i + 2]));
         }
+
+        // for (intView) |vi| {
+        //     try indices.append(alloc, @intCast(vi));
+        // }
     } else if (accessor.component_type == .unsigned_integer) {
         @panic("u32 indices are not supported");
     }
@@ -433,6 +448,8 @@ fn loadGLTF() !void {
             .usage = .{ .index_buffer = true },
         },
     );
+
+    GLTFState.primitive.index_count = @intCast(indices.items.len);
 }
 
 fn deinitGLTF() void {
@@ -610,10 +627,10 @@ export fn init() void {
 
     createBox(body_interface, vec3.zero(), vec3.new(1000, 1, 1000));
 
-    createBox(body_interface, vec3.new(0, 5, 10), vec3.new(10, 10, 10));
-    createBox(body_interface, vec3.new(0, 5, -10), vec3.new(10, 10, 10));
-    createBox(body_interface, vec3.new(5, 5, -20), vec3.new(10, 10, 10));
-    createBox(body_interface, vec3.new(-5, 5, -30), vec3.new(10, 10, 10));
+    // createBox(body_interface, vec3.new(0, 5, 10), vec3.new(10, 10, 10));
+    // createBox(body_interface, vec3.new(0, 5, -10), vec3.new(10, 10, 10));
+    createBox(body_interface, vec3.new(5, 5, -40), vec3.new(10, 10, 10));
+    // createBox(body_interface, vec3.new(-5, 5, -30), vec3.new(10, 10, 10));
 
     // var pcg = std.Random.Pcg.init(234583423);
     // const r = pcg.random();
@@ -650,6 +667,17 @@ fn drawCube(vp: *const mat4, pos: vec3, size: vec3) void {
 
     sg.applyUniforms(shd.UB_vs_params, sg.asRange(&vs_params));
     sg.draw(0, 36, 1);
+}
+
+fn drawPrimitive(primitive: *const Primitive, vp: *const mat4, pos: vec3, size: vec3) void {
+    const scale = mat4.scale(size);
+
+    const model = mat4.translate(pos).mul(scale);
+
+    const vs_params = shd.VsParams{ .mvp = vp.mul(model) };
+
+    sg.applyUniforms(shd.UB_vs_params, sg.asRange(&vs_params));
+    sg.draw(0, primitive.index_count, 1);
 }
 
 // #LOOP MARK: frame()
@@ -771,7 +799,8 @@ export fn frame() void {
     sg.applyBindings(state.bind);
 
     for (state.cubes.items) |cube| {
-        drawCube(&vp, cube.pos, cube.size);
+        //drawCube(&vp, cube.pos, cube.size);
+        drawPrimitive(&GLTFState.primitive, &vp, cube.pos, cube.size);
     }
 
     {
