@@ -296,6 +296,67 @@ fn gamepadOnAxisMove(
     // std.log.info("axis moved: {}, went from: {} to: {}", .{ axisId, lastValue, value });
 }
 
+const GLTFState = struct {
+    var buff: []align(4) const u8 = undefined;
+
+    var image: zigimg.Image = undefined;
+    var image_view: sg.View = undefined;
+};
+
+fn loadGLTF() !void {
+    const alloc = state.gpa.allocator();
+
+    var gltf = zgltf.Gltf.init(alloc);
+    defer gltf.deinit();
+
+    std.log.info("------------ LOADING GLTF -----------", .{});
+
+    GLTFState.buff = try std.fs.cwd().readFileAllocOptions(
+        alloc,
+        "art/testcubes.glb",
+        1024 * 1024,
+        null,
+        .@"4",
+        null,
+    );
+
+    try gltf.parse(GLTFState.buff);
+
+    std.log.info("images: {}", .{gltf.data.images.len});
+
+    const gltf_image = gltf.data.images[0];
+    const image = try zigimg.Image.fromMemory(alloc, gltf_image.data.?);
+
+    std.log.info("image width {}, height {}, pixel format {}", .{ image.width, image.height, image.pixelFormat() });
+
+    GLTFState.image = image;
+
+    const image_view = sg.makeView(.{
+        .texture = .{
+            .image = sg.makeImage(.{
+                .width = @intCast(image.width),
+                .height = @intCast(image.height),
+                .data = init: {
+                    var data = sg.ImageData{};
+                    data.mip_levels[0] = sg.asRange(image.pixels.asConstBytes());
+                    break :init data;
+                },
+            }),
+        },
+    });
+
+    state.bind.views[shd.VIEW_tex] = image_view;
+
+    GLTFState.image_view = image_view;
+}
+
+fn deinitGLTF() void {
+    const alloc = state.gpa.allocator();
+
+    alloc.free(GLTFState.buff);
+    GLTFState.image.deinit(alloc);
+}
+
 // #INIT MARK: init()
 export fn init() void {
     sg.setup(.{
@@ -315,29 +376,8 @@ export fn init() void {
     // gltf
 
     state.gpa = .init;
-    const gpa_alloc = state.gpa.allocator();
 
-    var gltf = zgltf.Gltf.init(gpa_alloc);
-    defer gltf.deinit();
-
-    const gltf_buff = std.fs.cwd().readFileAllocOptions(
-        gpa_alloc,
-        "art/testcubes.glb",
-        1024 * 1024,
-        null,
-        .@"4",
-        null,
-    ) catch unreachable;
-    defer gpa_alloc.free(gltf_buff);
-
-    gltf.parse(gltf_buff) catch unreachable;
-
-    std.log.info("image: {}", .{gltf.data.images.len});
-
-    const gltf_image = gltf.data.images[0];
-    const image = zigimg.Image.fromMemory(gpa_alloc, gltf_image.data.?) catch unreachable;
-
-    std.log.info("image width {}, height {}, pixel format {}", .{ image.width, image.height, image.pixelFormat() });
+    loadGLTF() catch unreachable;
 
     // const image = gltf.data.images[0];
     // std.log.info("image.data {s} {s}", .{ image.data orelse "null", image.uri orelse "null" });
@@ -349,35 +389,35 @@ export fn init() void {
     state.bind.vertex_buffers[0] = sg.makeBuffer(.{
         .data = sg.asRange(&[_]Vertex{
             // zig fmt: off
-            .{ .x = -cs, .y = -1.0, .z = -cs, .color = 0xFF0000FF, .u = 0,     .v = 0 },
-            .{ .x =  cs, .y = -1.0, .z = -cs, .color = 0xFF0000FF, .u = 32767, .v = 0 },
-            .{ .x =  cs, .y =  1.0, .z = -cs, .color = 0xFF0000FF, .u = 32767, .v = 32767 },
-            .{ .x = -cs, .y =  1.0, .z = -cs, .color = 0xFF0000FF, .u = 0,     .v = 32767 },
+            .{ .x = -cs, .y = -1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 0,     .v = 0 },
+            .{ .x =  cs, .y = -1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 32767, .v = 0 },
+            .{ .x =  cs, .y =  1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 32767, .v = 32767 },
+            .{ .x = -cs, .y =  1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 0,     .v = 32767 },
 
-            .{ .x = -cs, .y = -1.0, .z =  cs, .color = 0xFF00FF00, .u = 0,     .v = 0 },
-            .{ .x =  cs, .y = -1.0, .z =  cs, .color = 0xFF00FF00, .u = 32767, .v = 0 },
-            .{ .x =  cs, .y =  1.0, .z =  cs, .color = 0xFF00FF00, .u = 32767, .v = 32767 },
-            .{ .x = -cs, .y =  1.0, .z =  cs, .color = 0xFF00FF00, .u = 0,     .v = 32767 },
+            .{ .x = -cs, .y = -1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 0,     .v = 0 },
+            .{ .x =  cs, .y = -1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 32767, .v = 0 },
+            .{ .x =  cs, .y =  1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 32767, .v = 32767 },
+            .{ .x = -cs, .y =  1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 0,     .v = 32767 },
 
-            .{ .x = -cs, .y = -1.0, .z = -cs, .color = 0xFFFF0000, .u = 0,     .v = 0 },
-            .{ .x = -cs, .y =  1.0, .z = -cs, .color = 0xFFFF0000, .u = 32767, .v = 0 },
-            .{ .x = -cs, .y =  1.0, .z =  cs, .color = 0xFFFF0000, .u = 32767, .v = 32767 },
-            .{ .x = -cs, .y = -1.0, .z =  cs, .color = 0xFFFF0000, .u = 0,     .v = 32767 },
+            .{ .x = -cs, .y = -1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 0,     .v = 0 },
+            .{ .x = -cs, .y =  1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 32767, .v = 0 },
+            .{ .x = -cs, .y =  1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 32767, .v = 32767 },
+            .{ .x = -cs, .y = -1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 0,     .v = 32767 },
 
-            .{ .x =  cs, .y = -1.0, .z = -cs, .color = 0xFFFF007F, .u = 0,     .v = 0 },
-            .{ .x =  cs, .y =  1.0, .z = -cs, .color = 0xFFFF007F, .u = 32767, .v = 0 },
-            .{ .x =  cs, .y =  1.0, .z =  cs, .color = 0xFFFF007F, .u = 32767, .v = 32767 },
-            .{ .x =  cs, .y = -1.0, .z =  cs, .color = 0xFFFF007F, .u = 0,     .v = 32767 },
+            .{ .x =  cs, .y = -1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 0,     .v = 0 },
+            .{ .x =  cs, .y =  1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 32767, .v = 0 },
+            .{ .x =  cs, .y =  1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 32767, .v = 32767 },
+            .{ .x =  cs, .y = -1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 0,     .v = 32767 },
 
-            .{ .x = -cs, .y = -1.0, .z = -cs, .color = 0xFFFF7F00, .u = 0,     .v = 0 },
-            .{ .x = -cs, .y = -1.0, .z =  cs, .color = 0xFFFF7F00, .u = 32767, .v = 0 },
-            .{ .x =  cs, .y = -1.0, .z =  cs, .color = 0xFFFF7F00, .u = 32767, .v = 32767 },
-            .{ .x =  cs, .y = -1.0, .z = -cs, .color = 0xFFFF7F00, .u = 0,     .v = 32767 },
+            .{ .x = -cs, .y = -1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 0,     .v = 0 },
+            .{ .x = -cs, .y = -1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 32767, .v = 0 },
+            .{ .x =  cs, .y = -1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 32767, .v = 32767 },
+            .{ .x =  cs, .y = -1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 0,     .v = 32767 },
 
-            .{ .x = -cs, .y =  1.0, .z = -cs, .color = 0xFF007FFF, .u = 0,     .v = 0 },
-            .{ .x = -cs, .y =  1.0, .z =  cs, .color = 0xFF007FFF, .u = 32767, .v = 0 },
-            .{ .x =  cs, .y =  1.0, .z =  cs, .color = 0xFF007FFF, .u = 32767, .v = 32767 },
-            .{ .x =  cs, .y =  1.0, .z = -cs, .color = 0xFF007FFF, .u = 0,     .v = 32767 },
+            .{ .x = -cs, .y =  1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 0,     .v = 0 },
+            .{ .x = -cs, .y =  1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 32767, .v = 0 },
+            .{ .x =  cs, .y =  1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 32767, .v = 32767 },
+            .{ .x =  cs, .y =  1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 0,     .v = 32767 },
         }),
         // zig fmt: on
     });
@@ -396,24 +436,24 @@ export fn init() void {
     });
 
     // create a small checker-board image and texture view
-    state.bind.views[shd.VIEW_tex] = sg.makeView(.{
-        .texture = .{
-            .image = sg.makeImage(.{
-                .width = 4,
-                .height = 4,
-                .data = init: {
-                    var data = sg.ImageData{};
-                    data.mip_levels[0] = sg.asRange(&[4 * 4]u32{
-                        0xFFFFFFFF, 0xFF000000, 0xFFFFFFFF, 0xFF000000,
-                        0xFF000000, 0xFFFFFFFF, 0xFF000000, 0xFFFFFFFF,
-                        0xFFFFFFFF, 0xFF000000, 0xFFFFFFFF, 0xFF000000,
-                        0xFF000000, 0xFFFFFFFF, 0xFF000000, 0xFFFFFFFF,
-                    });
-                    break :init data;
-                },
-            }),
-        },
-    });
+    // state.bind.views[shd.VIEW_tex] = sg.makeView(.{
+    //     .texture = .{
+    //         .image = sg.makeImage(.{
+    //             .width = 4,
+    //             .height = 4,
+    //             .data = init: {
+    //                 var data = sg.ImageData{};
+    //                 data.mip_levels[0] = sg.asRange(&[4 * 4]u32{
+    //                     0xFFFFFFFF, 0xFF000000, 0xFFFFFFFF, 0xFF000000,
+    //                     0xFF000000, 0xFFFFFFFF, 0xFF000000, 0xFFFFFFFF,
+    //                     0xFFFFFFFF, 0xFF000000, 0xFFFFFFFF, 0xFF000000,
+    //                     0xFF000000, 0xFFFFFFFF, 0xFF000000, 0xFFFFFFFF,
+    //                 });
+    //                 break :init data;
+    //             },
+    //         }),
+    //     },
+    // });
 
     // ...and a sampler object with default attributes
     state.bind.samplers[shd.SMP_smp] = sg.makeSampler(.{});
@@ -675,6 +715,16 @@ export fn frame() void {
         _ = ig.igSliderFloat("pitch", &pitchAccel, -1, 1);
         _ = ig.igSliderFloat("yaw", &yawAccel, -1, 1);
         _ = ig.igSliderFloat("throttle", &yAccel, 0, 1);
+
+        // const imgPtr = @as(*const anyopaque, @ptrCast(GLTFState.image.pixels.asConstBytes().ptr));
+        // const imgPtr: *anyopaque = @ptrFromInt(GLTFState.image_view.id);
+        // ig.igImage(.{
+        //     ._TexData = GLTFState.image.pixels.asConstBytes().ptr,
+        //     ._TexID = 0,
+        // }, .{
+        //     .x = @intCast(GLTFState.image.width),
+        //     .y = @intCast(GLTFState.image.height),
+        // });
     }
 
     simgui.render();
@@ -726,6 +776,7 @@ export fn input(event: ?*const sapp.Event) void {
 
 // MARK: cleanup()
 export fn cleanup() void {
+    deinitGLTF();
     _ = state.gpa.deinit();
 
     sg.shutdown();
