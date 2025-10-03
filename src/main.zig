@@ -348,6 +348,93 @@ fn loadGLTF() !void {
     state.bind.views[shd.VIEW_tex] = image_view;
 
     GLTFState.image_view = image_view;
+
+    std.log.info("image id: {}", .{image_view.id});
+
+    // primitive test:
+    std.log.info("Meshes: {}, Mesh[0] primitives: {}, attributes: {}", .{
+        gltf.data.meshes.len,
+        gltf.data.meshes[0].primitives.len,
+        gltf.data.meshes[0].primitives[0].attributes[0].position,
+    });
+
+    const primitive = gltf.data.meshes[0].primitives[0];
+
+    var vertices = try std.ArrayList(Vertex).initCapacity(alloc, 1024);
+
+    for (primitive.attributes) |attribute| {
+        switch (attribute) {
+            .position => |accessor_index| {
+                const accessor = gltf.data.accessors[accessor_index];
+                const vertView = try gltf.getDataFromBufferView(f32, alloc, accessor, gltf.glb_binary.?);
+
+                std.debug.assert(accessor.component_type == .float);
+                std.debug.assert(accessor.type == .vec3);
+
+                const vertexCount: usize = @intCast(accessor.count);
+
+                //try vertices.ensureTotalCapacity(vertexCount);
+
+                std.log.info("    -- VERTICES count: {}", .{vertexCount});
+
+                for (0..vertexCount) |vertexIndex| {
+                    try vertices.append(alloc, .{
+                        .x = vertView[vertexIndex * 3 + 0],
+                        .y = vertView[vertexIndex * 3 + 1],
+                        .z = vertView[vertexIndex * 3 + 2],
+                        .color = 0xFFFFFFFF,
+                        .u = 0,
+                        .v = 0,
+                    });
+                }
+            },
+            // .texcoord => |accessor_index| {
+            //     const accessor = gltf.data.accessors.items[accessor_index];
+
+            //     std.debug.assert(accessor.component_type == .float);
+            //     std.debug.assert(accessor.type == .vec2);
+
+            //     gltf.getDataFromBufferView(f32, &floatList, accessor, gltf.glb_binary.?);
+
+            //     std.log.info("      -- uvs: {} == {} ?", .{ meshPtr.vertices.items.len, accessor.count });
+
+            //     std.debug.assert(meshPtr.vertices.items.len > 0);
+            //     std.debug.assert(floatList.items.len == meshPtr.vertices.items.len * 2);
+
+            //     for (meshPtr.vertices.items, 0..) |*vertex, i| {
+            //         vertex.uv = math.vec2(
+            //             floatList.items[i * 2 + 0],
+            //             1 - floatList.items[i * 2 + 1],
+            //         );
+            //     }
+            // },
+            else => {},
+        }
+    }
+
+    state.bind.vertex_buffers[0] = sg.makeBuffer(.{ .data = sg.asRange(vertices.items) });
+
+    var indices = try std.ArrayList(u16).initCapacity(alloc, 1024);
+
+    const accessor = gltf.data.accessors[primitive.indices.?];
+    if (accessor.component_type == .unsigned_short) {
+        const intView = try gltf.getDataFromBufferView(u16, alloc, accessor, gltf.glb_binary.?);
+
+        std.log.info("    -- INDICES: count: {}, triangles: {}, type: short", .{ intView.len, @divExact(intView.len, 3) });
+
+        for (intView) |vi| {
+            try indices.append(alloc, @intCast(vi));
+        }
+    } else if (accessor.component_type == .unsigned_integer) {
+        @panic("u32 indices are not supported");
+    }
+
+    state.bind.index_buffer = sg.makeBuffer(
+        .{
+            .data = sg.asRange(indices.items),
+            .usage = .{ .index_buffer = true },
+        },
+    );
 }
 
 fn deinitGLTF() void {
@@ -384,56 +471,56 @@ export fn init() void {
 
     // Create a cube mesh
 
-    const cs: f32 = 1;
+    // const cs: f32 = 1;
 
-    state.bind.vertex_buffers[0] = sg.makeBuffer(.{
-        .data = sg.asRange(&[_]Vertex{
-            // zig fmt: off
-            .{ .x = -cs, .y = -1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 0,     .v = 0 },
-            .{ .x =  cs, .y = -1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 32767, .v = 0 },
-            .{ .x =  cs, .y =  1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 32767, .v = 32767 },
-            .{ .x = -cs, .y =  1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 0,     .v = 32767 },
+    // state.bind.vertex_buffers[0] = sg.makeBuffer(.{
+    //     .data = sg.asRange(&[_]Vertex{
+    //         // zig fmt: off
+    //         .{ .x = -cs, .y = -1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 0,     .v = 0 },
+    //         .{ .x =  cs, .y = -1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 32767, .v = 0 },
+    //         .{ .x =  cs, .y =  1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 32767, .v = 32767 },
+    //         .{ .x = -cs, .y =  1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 0,     .v = 32767 },
 
-            .{ .x = -cs, .y = -1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 0,     .v = 0 },
-            .{ .x =  cs, .y = -1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 32767, .v = 0 },
-            .{ .x =  cs, .y =  1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 32767, .v = 32767 },
-            .{ .x = -cs, .y =  1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 0,     .v = 32767 },
+    //         .{ .x = -cs, .y = -1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 0,     .v = 0 },
+    //         .{ .x =  cs, .y = -1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 32767, .v = 0 },
+    //         .{ .x =  cs, .y =  1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 32767, .v = 32767 },
+    //         .{ .x = -cs, .y =  1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 0,     .v = 32767 },
 
-            .{ .x = -cs, .y = -1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 0,     .v = 0 },
-            .{ .x = -cs, .y =  1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 32767, .v = 0 },
-            .{ .x = -cs, .y =  1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 32767, .v = 32767 },
-            .{ .x = -cs, .y = -1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 0,     .v = 32767 },
+    //         .{ .x = -cs, .y = -1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 0,     .v = 0 },
+    //         .{ .x = -cs, .y =  1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 32767, .v = 0 },
+    //         .{ .x = -cs, .y =  1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 32767, .v = 32767 },
+    //         .{ .x = -cs, .y = -1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 0,     .v = 32767 },
 
-            .{ .x =  cs, .y = -1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 0,     .v = 0 },
-            .{ .x =  cs, .y =  1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 32767, .v = 0 },
-            .{ .x =  cs, .y =  1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 32767, .v = 32767 },
-            .{ .x =  cs, .y = -1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 0,     .v = 32767 },
+    //         .{ .x =  cs, .y = -1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 0,     .v = 0 },
+    //         .{ .x =  cs, .y =  1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 32767, .v = 0 },
+    //         .{ .x =  cs, .y =  1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 32767, .v = 32767 },
+    //         .{ .x =  cs, .y = -1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 0,     .v = 32767 },
 
-            .{ .x = -cs, .y = -1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 0,     .v = 0 },
-            .{ .x = -cs, .y = -1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 32767, .v = 0 },
-            .{ .x =  cs, .y = -1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 32767, .v = 32767 },
-            .{ .x =  cs, .y = -1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 0,     .v = 32767 },
+    //         .{ .x = -cs, .y = -1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 0,     .v = 0 },
+    //         .{ .x = -cs, .y = -1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 32767, .v = 0 },
+    //         .{ .x =  cs, .y = -1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 32767, .v = 32767 },
+    //         .{ .x =  cs, .y = -1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 0,     .v = 32767 },
 
-            .{ .x = -cs, .y =  1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 0,     .v = 0 },
-            .{ .x = -cs, .y =  1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 32767, .v = 0 },
-            .{ .x =  cs, .y =  1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 32767, .v = 32767 },
-            .{ .x =  cs, .y =  1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 0,     .v = 32767 },
-        }),
-        // zig fmt: on
-    });
+    //         .{ .x = -cs, .y =  1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 0,     .v = 0 },
+    //         .{ .x = -cs, .y =  1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 32767, .v = 0 },
+    //         .{ .x =  cs, .y =  1.0, .z =  cs, .color = 0xFFFFFFFF, .u = 32767, .v = 32767 },
+    //         .{ .x =  cs, .y =  1.0, .z = -cs, .color = 0xFFFFFFFF, .u = 0,     .v = 32767 },
+    //     }),
+    //     // zig fmt: on
+    // });
 
-    // cube index buffer
-    state.bind.index_buffer = sg.makeBuffer(.{
-        .usage = .{ .index_buffer = true },
-        .data = sg.asRange(&[_]u16{
-            0,  1,  2,  0,  2,  3,
-            6,  5,  4,  7,  6,  4,
-            8,  9,  10, 8,  10, 11,
-            14, 13, 12, 15, 14, 12,
-            16, 17, 18, 16, 18, 19,
-            22, 21, 20, 23, 22, 20,
-        }),
-    });
+    // // cube index buffer
+    // state.bind.index_buffer = sg.makeBuffer(.{
+    //     .usage = .{ .index_buffer = true },
+    //     .data = sg.asRange(&[_]u16{
+    //         0,  1,  2,  0,  2,  3,
+    //         6,  5,  4,  7,  6,  4,
+    //         8,  9,  10, 8,  10, 11,
+    //         14, 13, 12, 15, 14, 12,
+    //         16, 17, 18, 16, 18, 19,
+    //         22, 21, 20, 23, 22, 20,
+    //     }),
+    // });
 
     // create a small checker-board image and texture view
     // state.bind.views[shd.VIEW_tex] = sg.makeView(.{
@@ -718,12 +805,10 @@ export fn frame() void {
 
         // const imgPtr = @as(*const anyopaque, @ptrCast(GLTFState.image.pixels.asConstBytes().ptr));
         // const imgPtr: *anyopaque = @ptrFromInt(GLTFState.image_view.id);
-        // ig.igImage(.{
-        //     ._TexData = GLTFState.image.pixels.asConstBytes().ptr,
-        //     ._TexID = 0,
-        // }, .{
-        //     .x = @intCast(GLTFState.image.width),
-        //     .y = @intCast(GLTFState.image.height),
+        // ig.ImTextureData_GetTexRef(GLTFState.image.))
+        // ig.igImage(.{ ._TexID = GLTFState.image_view.id }, .{
+        //     .x = @floatFromInt(GLTFState.image.width),
+        //     .y = @floatFromInt(GLTFState.image.height),
         // });
     }
 
