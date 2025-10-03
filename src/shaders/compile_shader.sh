@@ -1,0 +1,1 @@
+./sokol-shdc --input texcube.glsl --output texcube.glsl.zig --slang glsl430:hlsl5:metal_macos -f sokol_zig
