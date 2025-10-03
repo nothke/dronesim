@@ -313,7 +313,7 @@ fn loadGLTF() !void {
 
     GLTFState.buff = try std.fs.cwd().readFileAllocOptions(
         alloc,
-        "art/testcubes.glb",
+        "art/testcube.glb",
         1024 * 1024,
         null,
         .@"4",
@@ -366,7 +366,7 @@ fn loadGLTF() !void {
         switch (attribute) {
             .position => |accessor_index| {
                 const accessor = gltf.data.accessors[accessor_index];
-                const vertView = try gltf.getDataFromBufferView(f32, alloc, accessor, gltf.glb_binary.?);
+                const view = try gltf.getDataFromBufferView(f32, alloc, accessor, gltf.glb_binary.?);
 
                 std.debug.assert(accessor.component_type == .float);
                 std.debug.assert(accessor.type == .vec3);
@@ -379,35 +379,33 @@ fn loadGLTF() !void {
 
                 for (0..vertexCount) |vertexIndex| {
                     try vertices.append(alloc, .{
-                        .x = vertView[vertexIndex * 3 + 0],
-                        .y = vertView[vertexIndex * 3 + 1],
-                        .z = vertView[vertexIndex * 3 + 2],
+                        .x = view[vertexIndex * 3 + 0],
+                        .y = view[vertexIndex * 3 + 1],
+                        .z = view[vertexIndex * 3 + 2],
                         .color = 0xFFFFFFFF,
                         .u = 0,
                         .v = 0,
                     });
                 }
             },
-            // .texcoord => |accessor_index| {
-            //     const accessor = gltf.data.accessors.items[accessor_index];
+            .texcoord => |accessor_index| {
+                const accessor = gltf.data.accessors[accessor_index];
 
-            //     std.debug.assert(accessor.component_type == .float);
-            //     std.debug.assert(accessor.type == .vec2);
+                std.debug.assert(accessor.component_type == .float);
+                std.debug.assert(accessor.type == .vec2);
 
-            //     gltf.getDataFromBufferView(f32, &floatList, accessor, gltf.glb_binary.?);
+                const view = try gltf.getDataFromBufferView(f32, alloc, accessor, gltf.glb_binary.?);
 
-            //     std.log.info("      -- uvs: {} == {} ?", .{ meshPtr.vertices.items.len, accessor.count });
+                std.log.info("      -- uvs: {} == {} ?", .{ vertices.items.len, accessor.count });
 
-            //     std.debug.assert(meshPtr.vertices.items.len > 0);
-            //     std.debug.assert(floatList.items.len == meshPtr.vertices.items.len * 2);
+                std.debug.assert(vertices.items.len > 0);
+                std.debug.assert(view.len == vertices.items.len * 2);
 
-            //     for (meshPtr.vertices.items, 0..) |*vertex, i| {
-            //         vertex.uv = math.vec2(
-            //             floatList.items[i * 2 + 0],
-            //             1 - floatList.items[i * 2 + 1],
-            //         );
-            //     }
-            // },
+                for (vertices.items, 0..) |*vertex, i| {
+                    vertex.u = @intFromFloat(view[i * 2 + 0] * 32767);
+                    vertex.v = @intFromFloat(1 - view[i * 2 + 1] * 32767);
+                }
+            },
             else => {},
         }
     }
@@ -611,23 +609,24 @@ export fn init() void {
     state.cubes = std.ArrayListUnmanaged(WorldCube).initBuffer(&state.cubesBuffer);
 
     createBox(body_interface, vec3.zero(), vec3.new(1000, 1, 1000));
-    createBox(body_interface, vec3.new(0, 5, 10), vec3.new(1, 10, 1));
-    createBox(body_interface, vec3.new(0, 5, -10), vec3.new(1, 10, 1));
-    createBox(body_interface, vec3.new(5, 5, -20), vec3.new(1, 10, 1));
-    createBox(body_interface, vec3.new(-5, 5, -30), vec3.new(1, 10, 1));
 
-    var pcg = std.Random.Pcg.init(234583423);
-    const r = pcg.random();
+    createBox(body_interface, vec3.new(0, 5, 10), vec3.new(10, 10, 10));
+    createBox(body_interface, vec3.new(0, 5, -10), vec3.new(10, 10, 10));
+    createBox(body_interface, vec3.new(5, 5, -20), vec3.new(10, 10, 10));
+    createBox(body_interface, vec3.new(-5, 5, -30), vec3.new(10, 10, 10));
 
-    const range = 1000;
+    // var pcg = std.Random.Pcg.init(234583423);
+    // const r = pcg.random();
 
-    for (0..800) |_| {
-        createBox(
-            body_interface,
-            vec3.new(-500 + r.float(f32) * range, 20 + r.float(f32) * 20, -500 + r.float(f32) * range),
-            vec3.new(1 + r.float(f32) * 6, 50 + r.float(f32) * 50, 1 + r.float(f32) * 6),
-        );
-    }
+    // const range = 1000;
+
+    // for (0..800) |_| {
+    //     createBox(
+    //         body_interface,
+    //         vec3.new(-500 + r.float(f32) * range, 20 + r.float(f32) * 20, -500 + r.float(f32) * range),
+    //         vec3.new(1 + r.float(f32) * 6, 50 + r.float(f32) * 50, 1 + r.float(f32) * 6),
+    //     );
+    // }
 }
 
 fn keyAxisInput(negative: bool, positive: bool) f32 {
