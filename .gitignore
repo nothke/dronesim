@@ -1,2 +1,4 @@
 .zig-*
 zig-*
+
+src/shaders/sokol-shdc
