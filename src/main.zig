@@ -299,6 +299,7 @@ fn gamepadOnAxisMove(
 // MARK: #GLTF
 
 const Primitive = struct {
+    material: ?*Material = null,
     index_count: u32 = 0,
     vertex_buffer: sg.Buffer = .{},
     index_buffer: sg.Buffer = .{},
@@ -310,16 +311,25 @@ const Texture = struct {
 };
 
 const Node = struct {
-    mesh: []Mesh,
-};
+    m: mat4,
+    primitives_buffer: [8]*Primitive = undefined,
+    primitives: std.ArrayList(*Primitive),
 
-const Mesh = struct {
-    material: *Material,
-    primitive: *Primitive,
+    fn init() Node {
+        var node = Node{
+            .m = .identity(),
+            .primitives = undefined,
+        };
+
+        node.primitives = .initBuffer(&node.primitives_buffer);
+
+        return node;
+    }
 };
 
 const Material = struct {
-    texture: *Texture,
+    color: [4]f32,
+    texture: ?*Texture,
 };
 
 const GLTFState = struct {
@@ -327,6 +337,8 @@ const GLTFState = struct {
 
     var primitives: std.ArrayList(Primitive) = undefined;
     var textures: std.ArrayList(Texture) = undefined;
+    var nodes: std.ArrayList(Node) = undefined;
+    var materials: std.ArrayList(Material) = undefined;
 };
 
 fn loadGLTF() !void {
@@ -352,6 +364,8 @@ fn loadGLTF() !void {
 
     GLTFState.primitives = try .initCapacity(alloc, 64);
     GLTFState.textures = try .initCapacity(alloc, 64);
+    GLTFState.nodes = try .initCapacity(alloc, 64);
+    GLTFState.materials = try .initCapacity(alloc, 64);
 
     // Image
 
@@ -479,6 +493,60 @@ fn loadGLTF() !void {
             },
         ),
     });
+
+    // #MATERIAL
+    for (gltf.data.materials) |gltfMaterial| {
+        std.log.info("\nMaterial: \"{s}\"", .{gltfMaterial.name.?});
+
+        const col = gltfMaterial.metallic_roughness.base_color_factor;
+        std.log.info("   - color {any}", .{col});
+
+        var tex: ?*Texture = null;
+
+        if (gltfMaterial.metallic_roughness.base_color_texture) |gltfTexture| {
+            tex = &GLTFState.textures.items[gltfTexture.index];
+            std.log.info("   - has color texture! Index: {}", .{gltfTexture.index});
+        }
+
+        try GLTFState.materials.append(alloc, .{
+            .texture = tex,
+            .color = col,
+        });
+    }
+
+    // Nodes
+    for (gltf.data.nodes) |gltf_node| {
+        var node = Node.init();
+
+        if (gltf_node.matrix) |mat| {
+            node.m.m = .{ mat[0..4].*, mat[4..8].*, mat[8..12].*, mat[12..16].* };
+        } else {
+            const pos = mat4.translate(vec3.fromArr(gltf_node.translation));
+            const rot = mat4.identity(); // TODO: Add quaternion rotations
+            const scale = mat4.scale(vec3.fromArr(gltf_node.scale));
+
+            node.m = pos.mul(rot).mul(scale);
+
+            std.log.info("Found object: {s}, pos: {any}, rot: {any}, scl: {any}", .{
+                gltf_node.name.?,
+                gltf_node.translation,
+                gltf_node.rotation,
+                gltf_node.scale,
+            });
+        }
+
+        if (gltf_node.mesh) |meshi| {
+            try node.primitives.append(alloc, &GLTFState.primitives.items[meshi]);
+
+            // TODO: Handle multiple primitives
+
+            std.log.info("Has mesh index: {}", .{meshi});
+        } else {
+            std.log.err("Not a mesh", .{});
+        }
+
+        try GLTFState.nodes.append(alloc, node);
+    }
 }
 
 fn deinitGLTF() void {
