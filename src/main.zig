@@ -300,6 +300,8 @@ fn gamepadOnAxisMove(
 
 const Primitive = struct {
     index_count: u32 = 0,
+    vertex_buffer: sg.Buffer = .{},
+    index_buffer: sg.Buffer = .{},
 };
 
 const Texture = struct {
@@ -307,11 +309,24 @@ const Texture = struct {
     view: sg.View,
 };
 
+const Node = struct {
+    mesh: []Mesh,
+};
+
+const Mesh = struct {
+    material: *Material,
+    primitive: *Primitive,
+};
+
+const Material = struct {
+    texture: *Texture,
+};
+
 const GLTFState = struct {
     var buff: []align(4) const u8 = undefined;
 
-    var primitive: Primitive = .{};
-    var texture: Texture = undefined;
+    var primitives: std.ArrayList(Primitive) = undefined;
+    var textures: std.ArrayList(Texture) = undefined;
 };
 
 fn loadGLTF() !void {
@@ -334,6 +349,9 @@ fn loadGLTF() !void {
     try gltf.parse(GLTFState.buff);
 
     std.log.info("images: {}", .{gltf.data.images.len});
+
+    GLTFState.primitives = try .initCapacity(alloc, 64);
+    GLTFState.textures = try .initCapacity(alloc, 64);
 
     // Image
 
@@ -358,10 +376,10 @@ fn loadGLTF() !void {
 
     state.bind.views[shd.VIEW_tex] = image_view;
 
-    GLTFState.texture = .{
+    try GLTFState.textures.append(alloc, .{
         .image = image,
         .view = image_view,
-    };
+    });
 
     std.log.info("image id: {}", .{image_view.id});
 
@@ -426,8 +444,6 @@ fn loadGLTF() !void {
         }
     }
 
-    state.bind.vertex_buffers[0] = sg.makeBuffer(.{ .data = sg.asRange(vertices.items) });
-
     var indices = try std.ArrayList(u16).initCapacity(alloc, 1024);
 
     const accessor = gltf.data.accessors[primitive.indices.?];
@@ -451,21 +467,28 @@ fn loadGLTF() !void {
         @panic("u32 indices are not supported");
     }
 
-    state.bind.index_buffer = sg.makeBuffer(
-        .{
-            .data = sg.asRange(indices.items),
-            .usage = .{ .index_buffer = true },
-        },
-    );
-
-    GLTFState.primitive.index_count = @intCast(indices.items.len);
+    try GLTFState.primitives.append(alloc, .{
+        .index_count = @intCast(indices.items.len),
+        .vertex_buffer = sg.makeBuffer(.{
+            .data = sg.asRange(vertices.items),
+        }),
+        .index_buffer = sg.makeBuffer(
+            .{
+                .data = sg.asRange(indices.items),
+                .usage = .{ .index_buffer = true },
+            },
+        ),
+    });
 }
 
 fn deinitGLTF() void {
     const alloc = state.gpa.allocator();
 
     alloc.free(GLTFState.buff);
-    GLTFState.texture.image.deinit(alloc);
+
+    for (GLTFState.textures.items) |*texture| {
+        texture.image.deinit(alloc);
+    }
 }
 
 // #INIT MARK: init()
@@ -685,6 +708,9 @@ fn drawPrimitive(primitive: *const Primitive, vp: *const mat4, pos: vec3, size: 
 
     const vs_params = shd.VsParams{ .mvp = vp.mul(model) };
 
+    state.bind.vertex_buffers[0] = primitive.vertex_buffer;
+    state.bind.index_buffer = primitive.index_buffer;
+
     sg.applyUniforms(shd.UB_vs_params, sg.asRange(&vs_params));
     sg.draw(0, primitive.index_count, 1);
 }
@@ -805,11 +831,17 @@ export fn frame() void {
     // rendering
     sg.beginPass(.{ .action = state.pass_action, .swapchain = sglue.swapchain() });
     sg.applyPipeline(state.pip);
+
+    for (GLTFState.primitives.items) |primitive| {
+        state.bind.vertex_buffers[0] = primitive.vertex_buffer;
+        state.bind.index_buffer = primitive.index_buffer;
+    }
+
     sg.applyBindings(state.bind);
 
     for (state.cubes.items) |cube| {
         //drawCube(&vp, cube.pos, cube.size);
-        drawPrimitive(&GLTFState.primitive, &vp, cube.pos, cube.size);
+        drawPrimitive(&GLTFState.primitives.items[0], &vp, cube.pos, cube.size);
     }
 
     {
