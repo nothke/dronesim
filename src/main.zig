@@ -302,12 +302,16 @@ const Primitive = struct {
     index_count: u32 = 0,
 };
 
+const Texture = struct {
+    image: zigimg.Image,
+    view: sg.View,
+};
+
 const GLTFState = struct {
     var buff: []align(4) const u8 = undefined;
 
     var primitive: Primitive = .{};
-    var image: zigimg.Image = undefined;
-    var image_view: sg.View = undefined;
+    var texture: Texture = undefined;
 };
 
 fn loadGLTF() !void {
@@ -331,12 +335,12 @@ fn loadGLTF() !void {
 
     std.log.info("images: {}", .{gltf.data.images.len});
 
+    // Image
+
     const gltf_image = gltf.data.images[0];
     const image = try zigimg.Image.fromMemory(alloc, gltf_image.data.?);
 
     std.log.info("image width {}, height {}, pixel format {}", .{ image.width, image.height, image.pixelFormat() });
-
-    GLTFState.image = image;
 
     const image_view = sg.makeView(.{
         .texture = .{
@@ -354,7 +358,10 @@ fn loadGLTF() !void {
 
     state.bind.views[shd.VIEW_tex] = image_view;
 
-    GLTFState.image_view = image_view;
+    GLTFState.texture = .{
+        .image = image,
+        .view = image_view,
+    };
 
     std.log.info("image id: {}", .{image_view.id});
 
@@ -364,6 +371,8 @@ fn loadGLTF() !void {
         gltf.data.meshes[0].primitives.len,
         gltf.data.meshes[0].primitives[0].attributes[0].position,
     });
+
+    // Primitive
 
     const primitive = gltf.data.meshes[0].primitives[0];
 
@@ -456,7 +465,7 @@ fn deinitGLTF() void {
     const alloc = state.gpa.allocator();
 
     alloc.free(GLTFState.buff);
-    GLTFState.image.deinit(alloc);
+    GLTFState.texture.image.deinit(alloc);
 }
 
 // #INIT MARK: init()
