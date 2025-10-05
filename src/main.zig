@@ -560,7 +560,7 @@ fn loadGLTF() !void {
                         .usage = .{ .index_buffer = true },
                     },
                 ),
-                .index_count = @intCast(indices.items.len),
+                .index_count = @intCast(indices.items.len + 9),
                 .data = mesh_data,
                 .material = material,
             });
@@ -857,20 +857,6 @@ fn drawCube(vp: *const mat4, pos: vec3, size: vec3) void {
 
     sg.applyUniforms(shd.UB_vs_params, sg.asRange(&vs_params));
     sg.draw(0, 36, 1);
-}
-
-fn drawPrimitive(primitive: *const Primitive, vp: *const mat4, pos: vec3, size: vec3) void {
-    const scale = mat4.scale(size);
-
-    const model = mat4.translate(pos).mul(scale);
-
-    const vs_params = shd.VsParams{ .mvp = vp.mul(model) };
-
-    state.bind.vertex_buffers[0] = primitive.vertex_buffer;
-    state.bind.index_buffer = primitive.index_buffer;
-
-    sg.applyUniforms(shd.UB_vs_params, sg.asRange(&vs_params));
-    sg.draw(0, primitive.index_count, 1);
 }
 
 // #LOOP MARK: frame()
