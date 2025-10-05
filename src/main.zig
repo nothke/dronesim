@@ -298,33 +298,9 @@ fn gamepadOnAxisMove(
 
 // MARK: #GLTF
 
-const Primitive = struct {
-    material: ?*Material = null,
-    index_count: u32 = 0,
-    vertex_buffer: sg.Buffer = .{},
-    index_buffer: sg.Buffer = .{},
-};
-
 const Texture = struct {
     image: zigimg.Image,
     view: sg.View,
-};
-
-const Node = struct {
-    m: mat4,
-    primitives_buffer: [8]*Primitive = undefined,
-    primitives: std.ArrayList(*Primitive),
-
-    fn init() Node {
-        var node = Node{
-            .m = .identity(),
-            .primitives = undefined,
-        };
-
-        node.primitives = .initBuffer(&node.primitives_buffer);
-
-        return node;
-    }
 };
 
 const Material = struct {
@@ -332,10 +308,53 @@ const Material = struct {
     texture: ?*Texture,
 };
 
+const Primitive = struct {
+    material: ?*Material = null,
+    index_count: u32 = 0,
+    vertex_buffer: sg.Buffer = .{},
+    index_buffer: sg.Buffer = .{},
+    data: ?*MeshData = null,
+
+    fn freeData(self: *Primitive, alloc: std.mem.Allocator) void {
+        if (self.data) |data| {
+            data.vertices.deinit(alloc);
+            data.indices.deinit(alloc);
+
+            alloc.free(data);
+        }
+        self.data = null;
+    }
+};
+
+const Mesh = struct {
+    primitives_buffer: [8]Primitive = undefined,
+    primitives: std.ArrayList(Primitive),
+
+    fn init() Mesh {
+        var mesh = Mesh{
+            .primitives = undefined,
+        };
+
+        mesh.primitives = .initBuffer(&mesh.primitives_buffer);
+
+        return mesh;
+    }
+};
+
+const MeshData = struct {
+    vertices: std.ArrayList(Vertex),
+    indices: std.ArrayList(u16),
+};
+
+const Node = struct {
+    m: mat4 = .identity(),
+    mesh: ?*Mesh = null,
+};
+
 const GLTFState = struct {
     var buff: []align(4) const u8 = undefined;
 
-    var primitives: std.ArrayList(Primitive) = undefined;
+    var meshes: std.ArrayList(Mesh) = undefined;
     var textures: std.ArrayList(Texture) = undefined;
     var nodes: std.ArrayList(Node) = undefined;
     var materials: std.ArrayList(Material) = undefined;
@@ -362,141 +381,46 @@ fn loadGLTF() !void {
 
     std.log.info("images: {}", .{gltf.data.images.len});
 
-    GLTFState.primitives = try .initCapacity(alloc, 64);
+    GLTFState.meshes = try .initCapacity(alloc, 64);
     GLTFState.textures = try .initCapacity(alloc, 64);
     GLTFState.nodes = try .initCapacity(alloc, 64);
     GLTFState.materials = try .initCapacity(alloc, 64);
 
     // Image
 
-    const gltf_image = gltf.data.images[0];
-    const image = try zigimg.Image.fromMemory(alloc, gltf_image.data.?);
+    for (gltf.data.images) |gltf_image| {
+        const image = try zigimg.Image.fromMemory(alloc, gltf_image.data.?);
 
-    std.log.info("image width {}, height {}, pixel format {}", .{ image.width, image.height, image.pixelFormat() });
+        std.log.info("image width {}, height {}, pixel format {}", .{ image.width, image.height, image.pixelFormat() });
 
-    const image_view = sg.makeView(.{
-        .texture = .{
-            .image = sg.makeImage(.{
-                .width = @intCast(image.width),
-                .height = @intCast(image.height),
-                .data = init: {
-                    var data = sg.ImageData{};
-                    data.mip_levels[0] = sg.asRange(image.pixels.asConstBytes());
-                    break :init data;
-                },
-            }),
-        },
-    });
-
-    state.bind.views[shd.VIEW_tex] = image_view;
-
-    try GLTFState.textures.append(alloc, .{
-        .image = image,
-        .view = image_view,
-    });
-
-    std.log.info("image id: {}", .{image_view.id});
-
-    // primitive test:
-    std.log.info("Meshes: {}, Mesh[0] primitives: {}, attributes: {}", .{
-        gltf.data.meshes.len,
-        gltf.data.meshes[0].primitives.len,
-        gltf.data.meshes[0].primitives[0].attributes[0].position,
-    });
-
-    // Primitive
-
-    const primitive = gltf.data.meshes[0].primitives[0];
-
-    var vertices = try std.ArrayList(Vertex).initCapacity(alloc, 1024);
-
-    for (primitive.attributes) |attribute| {
-        switch (attribute) {
-            .position => |accessor_index| {
-                const accessor = gltf.data.accessors[accessor_index];
-                const view = try gltf.getDataFromBufferView(f32, alloc, accessor, gltf.glb_binary.?);
-
-                std.debug.assert(accessor.component_type == .float);
-                std.debug.assert(accessor.type == .vec3);
-
-                const vertexCount: usize = @intCast(accessor.count);
-
-                try vertices.ensureTotalCapacity(alloc, vertexCount);
-
-                std.log.info("    -- VERTICES count: {}", .{vertexCount});
-
-                for (0..vertexCount) |vertexIndex| {
-                    vertices.appendAssumeCapacity(.{
-                        .x = view[vertexIndex * 3 + 0],
-                        .y = view[vertexIndex * 3 + 1],
-                        .z = view[vertexIndex * 3 + 2],
-                        .color = 0xFFFFFFFF,
-                        .u = 0,
-                        .v = 0,
-                    });
-                }
+        const image_view = sg.makeView(.{
+            .texture = .{
+                .image = sg.makeImage(.{
+                    .width = @intCast(image.width),
+                    .height = @intCast(image.height),
+                    .data = init: {
+                        var data = sg.ImageData{};
+                        data.mip_levels[0] = sg.asRange(image.pixels.asConstBytes());
+                        break :init data;
+                    },
+                }),
             },
-            .texcoord => |accessor_index| {
-                const accessor = gltf.data.accessors[accessor_index];
+        });
 
-                std.debug.assert(accessor.component_type == .float);
-                std.debug.assert(accessor.type == .vec2);
+        state.bind.views[shd.VIEW_tex] = image_view;
 
-                const view = try gltf.getDataFromBufferView(f32, alloc, accessor, gltf.glb_binary.?);
+        try GLTFState.textures.append(alloc, .{
+            .image = image,
+            .view = image_view,
+        });
 
-                std.log.info("      -- uvs: {} == {} ?", .{ vertices.items.len, accessor.count });
-
-                std.debug.assert(vertices.items.len > 0);
-                std.debug.assert(view.len == vertices.items.len * 2);
-
-                for (vertices.items, 0..) |*vertex, i| {
-                    vertex.u = @intFromFloat(view[i * 2 + 0] * 32767);
-                    vertex.v = @intFromFloat(view[i * 2 + 1] * 32767);
-                }
-            },
-            else => {},
-        }
+        std.log.info("image id: {}", .{image_view.id});
     }
-
-    var indices = try std.ArrayList(u16).initCapacity(alloc, 1024);
-
-    const accessor = gltf.data.accessors[primitive.indices.?];
-    if (accessor.component_type == .unsigned_short) {
-        const view = try gltf.getDataFromBufferView(u16, alloc, accessor, gltf.glb_binary.?);
-        try indices.ensureTotalCapacity(alloc, view.len);
-
-        std.log.info("    -- INDICES: count: {}, triangles: {}, type: short", .{ view.len, @divExact(view.len, 3) });
-
-        var i: usize = 0;
-        while (i < view.len) : (i += 3) {
-            indices.appendAssumeCapacity(@intCast(view[i + 1]));
-            indices.appendAssumeCapacity(@intCast(view[i + 0]));
-            indices.appendAssumeCapacity(@intCast(view[i + 2]));
-        }
-
-        // for (intView) |vi| {
-        //     try indices.append(alloc, @intCast(vi));
-        // }
-    } else if (accessor.component_type == .unsigned_integer) {
-        @panic("u32 indices are not supported");
-    }
-
-    try GLTFState.primitives.append(alloc, .{
-        .index_count = @intCast(indices.items.len),
-        .vertex_buffer = sg.makeBuffer(.{
-            .data = sg.asRange(vertices.items),
-        }),
-        .index_buffer = sg.makeBuffer(
-            .{
-                .data = sg.asRange(indices.items),
-                .usage = .{ .index_buffer = true },
-            },
-        ),
-    });
 
     // #MATERIAL
     for (gltf.data.materials) |gltfMaterial| {
-        std.log.info("\nMaterial: \"{s}\"", .{gltfMaterial.name.?});
+        std.log.info("", .{});
+        std.log.info("Material: \"{s}\"", .{gltfMaterial.name.?});
 
         const col = gltfMaterial.metallic_roughness.base_color_factor;
         std.log.info("   - color {any}", .{col});
@@ -514,9 +438,118 @@ fn loadGLTF() !void {
         });
     }
 
+    // primitive test:
+    std.log.info("Meshes: {}, Mesh[0] primitives: {}, attributes: {}", .{
+        gltf.data.meshes.len,
+        gltf.data.meshes[0].primitives.len,
+        gltf.data.meshes[0].primitives[0].attributes.len,
+    });
+
+    // Meshes/Primitives
+
+    for (gltf.data.meshes) |gltf_mesh| {
+        const mesh_ptr = try GLTFState.meshes.addOne(alloc);
+        mesh_ptr.* = .init();
+
+        for (gltf_mesh.primitives) |primitive| {
+            var mesh_data = try alloc.create(MeshData);
+
+            mesh_data.* = .{
+                .vertices = try .initCapacity(alloc, 1024),
+                .indices = try .initCapacity(alloc, 1024),
+            };
+
+            const vertices = &mesh_data.vertices;
+            const indices = &mesh_data.indices;
+
+            for (primitive.attributes) |attribute| {
+                switch (attribute) {
+                    .position => |accessor_index| {
+                        const accessor = gltf.data.accessors[accessor_index];
+                        const view = try gltf.getDataFromBufferView(f32, alloc, accessor, gltf.glb_binary.?);
+
+                        std.debug.assert(accessor.component_type == .float);
+                        std.debug.assert(accessor.type == .vec3);
+
+                        const vertexCount: usize = @intCast(accessor.count);
+
+                        try vertices.ensureTotalCapacity(alloc, vertexCount);
+
+                        std.log.info("    -- VERTICES count: {}", .{vertexCount});
+
+                        for (0..vertexCount) |vertexIndex| {
+                            vertices.appendAssumeCapacity(.{
+                                .x = view[vertexIndex * 3 + 0],
+                                .y = view[vertexIndex * 3 + 1],
+                                .z = view[vertexIndex * 3 + 2],
+                                .color = 0xFFFFFFFF,
+                                .u = 0,
+                                .v = 0,
+                            });
+                        }
+                    },
+                    .texcoord => |accessor_index| {
+                        const accessor = gltf.data.accessors[accessor_index];
+
+                        std.debug.assert(accessor.component_type == .float);
+                        std.debug.assert(accessor.type == .vec2);
+
+                        const view = try gltf.getDataFromBufferView(f32, alloc, accessor, gltf.glb_binary.?);
+
+                        std.log.info("      -- uvs: {} == {} ?", .{ vertices.items.len, accessor.count });
+
+                        std.debug.assert(vertices.items.len > 0);
+                        std.debug.assert(view.len == vertices.items.len * 2);
+
+                        for (vertices.items, 0..) |*vertex, i| {
+                            vertex.u = @intFromFloat(view[i * 2 + 0] * 32767);
+                            vertex.v = @intFromFloat(view[i * 2 + 1] * 32767);
+                        }
+                    },
+                    else => {},
+                }
+            }
+
+            const accessor = gltf.data.accessors[primitive.indices.?];
+            if (accessor.component_type == .unsigned_short) {
+                const view = try gltf.getDataFromBufferView(u16, alloc, accessor, gltf.glb_binary.?);
+                try indices.ensureTotalCapacity(alloc, view.len);
+
+                std.log.info("    -- INDICES: count: {}, triangles: {}, type: short", .{ view.len, @divExact(view.len, 3) });
+
+                var i: usize = 0;
+                while (i < view.len) : (i += 3) {
+                    indices.appendAssumeCapacity(@intCast(view[i + 1]));
+                    indices.appendAssumeCapacity(@intCast(view[i + 0]));
+                    indices.appendAssumeCapacity(@intCast(view[i + 2]));
+                }
+
+                // for (intView) |vi| {
+                //     try indices.append(alloc, @intCast(vi));
+                // }
+            } else if (accessor.component_type == .unsigned_integer) {
+                @panic("u32 indices are not supported");
+            }
+
+            try mesh_ptr.primitives.appendBounded(.{
+                .vertex_buffer = sg.makeBuffer(.{
+                    .data = sg.asRange(vertices.items),
+                }),
+                .index_buffer = sg.makeBuffer(
+                    .{
+                        .data = sg.asRange(indices.items),
+                        .usage = .{ .index_buffer = true },
+                    },
+                ),
+                .index_count = @intCast(indices.items.len),
+                .data = mesh_data,
+            });
+        } // for primitives
+    } // for meshes
+
     // Nodes
     for (gltf.data.nodes) |gltf_node| {
-        var node = Node.init();
+        var node: Node = .{};
 
         if (gltf_node.matrix) |mat| {
             node.m.m = .{ mat[0..4].*, mat[4..8].*, mat[8..12].*, mat[12..16].* };
@@ -536,17 +569,16 @@ fn loadGLTF() !void {
         }
 
         if (gltf_node.mesh) |meshi| {
-            try node.primitives.append(alloc, &GLTFState.primitives.items[meshi]);
-
-            // TODO: Handle multiple primitives
-
+            node.mesh = &GLTFState.meshes.items[meshi];
             std.log.info("Has mesh index: {}", .{meshi});
         } else {
-            std.log.err("Not a mesh", .{});
+            std.log.info("Not a mesh", .{});
         }
 
         try GLTFState.nodes.append(alloc, node);
     }
+
+    std.log.info("------------ Finished loading GLTF -----------", .{});
 }
 
 fn deinitGLTF() void {
@@ -556,6 +588,7 @@ fn deinitGLTF() void {
 
     for (GLTFState.textures.items) |*texture| {
         texture.image.deinit(alloc);
+        std.log.info("deiniting texture", .{});
     }
 }
 
@@ -900,16 +933,38 @@ export fn frame() void {
     sg.beginPass(.{ .action = state.pass_action, .swapchain = sglue.swapchain() });
     sg.applyPipeline(state.pip);
 
-    for (GLTFState.primitives.items) |primitive| {
-        state.bind.vertex_buffers[0] = primitive.vertex_buffer;
-        state.bind.index_buffer = primitive.index_buffer;
+    std.log.info("Rendering nodes..", .{});
+
+    for (GLTFState.nodes.items) |node| {
+        if (node.mesh) |mesh| {
+            for (mesh.primitives.items) |primitive| {
+                if (primitive.material) |material| {
+                    if (material.texture) |texture| {
+                        state.bind.views[shd.VIEW_tex] = texture.view;
+                    } else {
+                        // TODO: use white texture
+                    }
+                } else {
+                    // TODO: use white mat
+                }
+
+                state.bind.vertex_buffers[0] = primitive.vertex_buffer;
+                state.bind.index_buffer = primitive.index_buffer;
+
+                sg.applyBindings(state.bind);
+
+                const vs_params = shd.VsParams{
+                    .mvp = vp.mul(node.m),
+                };
+
+                sg.applyUniforms(shd.UB_vs_params, sg.asRange(&vs_params));
+                sg.draw(0, primitive.index_count, 1);
+            }
+        }
     }
 
-    sg.applyBindings(state.bind);
-
     for (state.cubes.items) |cube| {
-        //drawCube(&vp, cube.pos, cube.size);
-        drawPrimitive(&GLTFState.primitives.items[0], &vp, cube.pos, cube.size);
+        drawCube(&vp, cube.pos, cube.size);
     }
 
     {
@@ -998,6 +1053,8 @@ export fn input(event: ?*const sapp.Event) void {
 
 // MARK: cleanup()
 export fn cleanup() void {
+    std.log.info("Cleanup!", .{});
+
     deinitGLTF();
     _ = state.gpa.deinit();
 
