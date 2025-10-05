@@ -51,6 +51,8 @@ const state = struct {
     var useGamepad = true;
 
     var gpa: std.heap.GeneralPurposeAllocator(.{}) = undefined;
+
+    var error_tex_view: sg.View = undefined;
 };
 
 var configData = struct {
@@ -695,24 +697,24 @@ export fn init() void {
     // });
 
     // create a small checker-board image and texture view
-    // state.bind.views[shd.VIEW_tex] = sg.makeView(.{
-    //     .texture = .{
-    //         .image = sg.makeImage(.{
-    //             .width = 4,
-    //             .height = 4,
-    //             .data = init: {
-    //                 var data = sg.ImageData{};
-    //                 data.mip_levels[0] = sg.asRange(&[4 * 4]u32{
-    //                     0xFFFFFFFF, 0xFF000000, 0xFFFFFFFF, 0xFF000000,
-    //                     0xFF000000, 0xFFFFFFFF, 0xFF000000, 0xFFFFFFFF,
-    //                     0xFFFFFFFF, 0xFF000000, 0xFFFFFFFF, 0xFF000000,
-    //                     0xFF000000, 0xFFFFFFFF, 0xFF000000, 0xFFFFFFFF,
-    //                 });
-    //                 break :init data;
-    //             },
-    //         }),
-    //     },
-    // });
+    state.error_tex_view = sg.makeView(.{
+        .texture = .{
+            .image = sg.makeImage(.{
+                .width = 4,
+                .height = 4,
+                .data = init: {
+                    var data = sg.ImageData{};
+                    data.mip_levels[0] = sg.asRange(&[4 * 4]u32{
+                        0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
+                        0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
+                        0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
+                        0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
+                    });
+                    break :init data;
+                },
+            }),
+        },
+    });
 
     // ...and a sampler object with default attributes
     state.bind.samplers[shd.SMP_smp] = sg.makeSampler(.{});
@@ -952,7 +954,7 @@ export fn frame() void {
                     if (material.texture) |texture| {
                         state.bind.views[shd.VIEW_tex] = texture.view;
                     } else {
-                        // TODO: use white texture
+                        state.bind.views[shd.VIEW_tex] = state.error_tex_view;
                     }
 
                     color = material.color;
