@@ -351,14 +351,31 @@ const Node = struct {
     mesh: ?*Mesh = null,
 };
 
-const GLTFState = struct {
-    var buff: []align(4) const u8 = undefined;
+// TODO: Can we keep this inside load function??
+var gltf_buffer: []align(4) const u8 = undefined;
 
-    var meshes: std.ArrayList(Mesh) = undefined;
-    var textures: std.ArrayList(Texture) = undefined;
-    var nodes: std.ArrayList(Node) = undefined;
-    var materials: std.ArrayList(Material) = undefined;
+const AssetBlock = struct {
+    nodes: std.ArrayList(Node) = undefined,
+
+    meshes: std.ArrayList(Mesh) = undefined,
+    textures: std.ArrayList(Texture) = undefined,
+    materials: std.ArrayList(Material) = undefined,
+
+    fn init(self: *AssetBlock, alloc: std.mem.Allocator) !void {
+        self.nodes = try .initCapacity(alloc, 64);
+        self.meshes = try .initCapacity(alloc, 64);
+        self.textures = try .initCapacity(alloc, 64);
+        self.materials = try .initCapacity(alloc, 64);
+    }
+    fn deinit(self: *AssetBlock, alloc: std.mem.Allocator) void {
+        self.nodes.deinit(alloc);
+        self.meshes.deinit(alloc);
+        self.textures.deinit(alloc);
+        self.materials.deinit(alloc);
+    }
 };
+
+var asset_block: AssetBlock = .{};
 
 fn loadGLTF() !void {
     const alloc = state.gpa.allocator();
@@ -370,7 +387,7 @@ fn loadGLTF() !void {
 
     // Load from buffer
 
-    GLTFState.buff = try std.fs.cwd().readFileAllocOptions(
+    gltf_buffer = try std.fs.cwd().readFileAllocOptions(
         alloc,
         "art/testcubes.glb",
         1024 * 1024,
@@ -379,16 +396,13 @@ fn loadGLTF() !void {
         null,
     );
 
-    try gltf.parse(GLTFState.buff);
+    try gltf.parse(gltf_buffer);
 
     std.log.info("images: {}", .{gltf.data.images.len});
 
     // Init
 
-    GLTFState.meshes = try .initCapacity(alloc, 64);
-    GLTFState.textures = try .initCapacity(alloc, 64);
-    GLTFState.nodes = try .initCapacity(alloc, 64);
-    GLTFState.materials = try .initCapacity(alloc, 64);
+    try asset_block.init(alloc);
 
     // Image / Texture
 
@@ -397,7 +411,7 @@ fn loadGLTF() !void {
 
         const bytes = image.pixels.asConstBytes(); // try alloc.dupe(u8, image.pixels.asConstBytes());
 
-        std.log.info("Image {}: {s}", .{ GLTFState.textures.items.len, gltf_image.name orelse "NO NAME" });
+        std.log.info("Image {}: {s}", .{ asset_block.textures.items.len, gltf_image.name orelse "NO NAME" });
         std.log.info("     -- width {}, height {}, format {}", .{ image.width, image.height, image.pixelFormat() });
 
         const image_view = sg.makeView(.{
@@ -416,7 +430,7 @@ fn loadGLTF() !void {
 
         state.bind.views[shd.VIEW_tex] = image_view;
 
-        try GLTFState.textures.append(alloc, .{
+        try asset_block.textures.append(alloc, .{
             .image = image,
             .view = image_view,
         });
@@ -436,15 +450,15 @@ fn loadGLTF() !void {
         var tex: ?*Texture = null;
 
         if (gltfMaterial.metallic_roughness.base_color_texture) |gltfTexture| {
-            std.debug.assert(GLTFState.textures.items.len > gltfTexture.index);
+            std.debug.assert(asset_block.textures.items.len > gltfTexture.index);
 
-            tex = &GLTFState.textures.items[gltfTexture.index];
+            tex = &asset_block.textures.items[gltfTexture.index];
             std.log.info("   - has color texture! Index: {}", .{gltfTexture.index});
         } else {
             std.log.info("   - no texture", .{});
         }
 
-        try GLTFState.materials.append(alloc, .{
+        try asset_block.materials.append(alloc, .{
             .texture = tex,
             .color = col,
         });
@@ -456,8 +470,8 @@ fn loadGLTF() !void {
         // const mesh_ptr = try GLTFState.meshes.addOne(alloc);
         // mesh_ptr.* = .init();
 
-        try GLTFState.meshes.append(alloc, try .init(alloc));
-        const mesh_ptr = &GLTFState.meshes.items[GLTFState.meshes.items.len - 1];
+        try asset_block.meshes.append(alloc, try .init(alloc));
+        const mesh_ptr = &asset_block.meshes.items[asset_block.meshes.items.len - 1];
 
         std.debug.assert(mesh_ptr.primitives.items.len == 0);
 
@@ -542,7 +556,7 @@ fn loadGLTF() !void {
             }
 
             const material: ?*Material = if (gltf_primitive.material) |mati|
-                &GLTFState.materials.items[mati]
+                &asset_block.materials.items[mati]
             else
                 null;
 
@@ -594,29 +608,31 @@ fn loadGLTF() !void {
         }
 
         if (gltf_node.mesh) |meshi| {
-            node.mesh = &GLTFState.meshes.items[meshi];
+            node.mesh = &asset_block.meshes.items[meshi];
             std.log.info("   -- Has mesh index: {}", .{meshi});
         } else {
             std.log.info("   -- Not a mesh", .{});
         }
 
-        try GLTFState.nodes.append(alloc, node);
+        try asset_block.nodes.append(alloc, node);
     }
 
     std.log.info("------------ Finished loading GLTF -----------", .{});
 
-    std.log.info("Vert 0: {any}", .{GLTFState.nodes.items[0].mesh.?.primitives.items[0].data.?.vertices.items[0]});
+    std.log.info("Vert 0: {any}", .{asset_block.nodes.items[0].mesh.?.primitives.items[0].data.?.vertices.items[0]});
 }
 
 fn deinitGLTF() void {
     const alloc = state.gpa.allocator();
 
-    alloc.free(GLTFState.buff);
+    alloc.free(gltf_buffer);
 
-    for (GLTFState.textures.items) |*texture| {
+    for (asset_block.textures.items) |*texture| {
         texture.image.deinit(alloc);
         std.log.info("deiniting texture", .{});
     }
+
+    asset_block.deinit(alloc);
 }
 
 // #INIT MARK: init()
@@ -960,7 +976,7 @@ export fn frame() void {
     sg.beginPass(.{ .action = state.pass_action, .swapchain = sglue.swapchain() });
     sg.applyPipeline(state.pip);
 
-    for (GLTFState.nodes.items) |node| {
+    for (asset_block.nodes.items) |node| {
         if (node.mesh) |mesh| {
             for (mesh.primitives.items) |primitive| {
                 var color = [4]f32{ 1, 1, 1, 1 };
