@@ -430,6 +430,8 @@ fn loadGLTF() !void {
         var tex: ?*Texture = null;
 
         if (gltfMaterial.metallic_roughness.base_color_texture) |gltfTexture| {
+            std.debug.assert(GLTFState.textures.items.len > gltfTexture.index);
+
             tex = &GLTFState.textures.items[gltfTexture.index];
             std.log.info("   - has color texture! Index: {}", .{gltfTexture.index});
         }
@@ -565,7 +567,12 @@ fn loadGLTF() !void {
 
             std.log.info("mat: {any}", .{mesh_ptr.primitives.getLast().material});
 
-            std.log.info("len: {}", .{mesh_ptr.primitives.getLast().data.?.vertices.items.len});
+            const debug_data = mesh_ptr.primitives.items[mesh_ptr.primitives.items.len - 1].data.?;
+            std.log.info("len: {} == {} == {}", .{
+                vertices.items.len,
+                debug_data.vertices.items.len,
+                mesh_ptr.primitives.getLast().data.?.vertices.items.len,
+            });
         } // for primitives
     } // for meshes
 
