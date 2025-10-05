@@ -345,10 +345,17 @@ const MeshData = struct {
 };
 
 const Node = struct {
-    name: []const u8 = "",
+    name: [:0]const u8 = "",
     m: mat4 = .identity(),
     // if node has no mesh, its a dummy
     mesh: ?*Mesh = null,
+
+    fn freeName(self: *Node, alloc: std.mem.Allocator) void {
+        if (self.name.len != 0) {
+            alloc.free(self.name);
+            self.name = "";
+        }
+    }
 };
 
 // TODO: Can we keep this inside load function??
@@ -389,7 +396,7 @@ fn loadGLTF() !void {
 
     gltf_buffer = try std.fs.cwd().readFileAllocOptions(
         alloc,
-        "art/testcubes.glb",
+        "art/testcube.glb",
         1024 * 1024,
         null,
         .@"4",
@@ -630,6 +637,10 @@ fn deinitGLTF() void {
     for (asset_block.textures.items) |*texture| {
         texture.image.deinit(alloc);
         std.log.info("deiniting texture", .{});
+    }
+
+    for (asset_block.nodes.items) |*node| {
+        node.freeName(alloc);
     }
 
     asset_block.deinit(alloc);
