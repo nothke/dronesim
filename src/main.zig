@@ -561,12 +561,19 @@ fn loadGLTF() !void {
             });
 
             std.debug.assert(mesh_ptr.primitives.getLast().data != null);
+            std.debug.assert(mesh_ptr.primitives.getLast().material != null);
+
+            std.log.info("mat: {any}", .{mesh_ptr.primitives.getLast().material});
 
             std.log.info("len: {}", .{mesh_ptr.primitives.getLast().data.?.vertices.items.len});
         } // for primitives
     } // for meshes
 
-    std.log.info("primitives: {any}", .{GLTFState.meshes.getLast().primitives.items});
+    std.log.info("meshes: {}, primitives: {}, last prim: {any}", .{
+        GLTFState.meshes.items.len,
+        GLTFState.meshes.getLast().primitives.items.len,
+        GLTFState.meshes.getLast().primitives.items,
+    });
     std.log.info("last mesh vert 0: {any}", .{GLTFState.meshes.getLast().primitives.items[0].data.?.vertices.items[0]});
 
     // Nodes
@@ -1199,6 +1206,9 @@ fn loadConfig() !void {
 
 // MARK: main()
 pub fn main() !void {
+    const a: i32 = 4;
+    const b = &a;
+    std.log.info("b: {any}", .{b});
 
     // bindings ini
     {
