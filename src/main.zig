@@ -328,13 +328,10 @@ const Primitive = struct {
 
 const Mesh = struct {
     primitives_buffer: [8]Primitive = undefined,
-    primitives: std.ArrayList(Primitive),
+    primitives: std.ArrayList(Primitive) = undefined,
 
     fn init() Mesh {
-        var mesh = Mesh{
-            .primitives = undefined,
-        };
-
+        var mesh: Mesh = .{};
         mesh.primitives = .initBuffer(&mesh.primitives_buffer);
 
         return mesh;
@@ -347,6 +344,7 @@ const MeshData = struct {
 };
 
 const Node = struct {
+    name: []const u8 = "",
     m: mat4 = .identity(),
     // if node has no mesh, its a dummy
     mesh: ?*Mesh = null,
@@ -454,8 +452,11 @@ fn loadGLTF() !void {
     // Meshes/Primitives
 
     for (gltf.data.meshes) |gltf_mesh| {
-        const mesh_ptr = try GLTFState.meshes.addOne(alloc);
-        mesh_ptr.* = .init();
+        // const mesh_ptr = try GLTFState.meshes.addOne(alloc);
+        // mesh_ptr.* = .init();
+
+        try GLTFState.meshes.append(alloc, .init());
+        const mesh_ptr = &GLTFState.meshes.items[GLTFState.meshes.items.len - 1];
 
         std.debug.assert(mesh_ptr.primitives.items.len == 0);
 
@@ -559,15 +560,22 @@ fn loadGLTF() !void {
                 .material = material,
             });
 
+            std.debug.assert(mesh_ptr.primitives.getLast().data != null);
+
             std.log.info("len: {}", .{mesh_ptr.primitives.getLast().data.?.vertices.items.len});
         } // for primitives
     } // for meshes
 
-    std.log.info("Last mesh vert 0: {any}", .{GLTFState.meshes.getLast().primitives.items[0].data.?.vertices.items[0]});
+    std.log.info("primitives: {any}", .{GLTFState.meshes.getLast().primitives.items});
+    std.log.info("last mesh vert 0: {any}", .{GLTFState.meshes.getLast().primitives.items[0].data.?.vertices.items[0]});
 
     // Nodes
     for (gltf.data.nodes) |gltf_node| {
         var node: Node = .{};
+
+        if (gltf_node.name) |name| {
+            node.name = try alloc.dupeZ(u8, name);
+        }
 
         if (gltf_node.matrix) |mat| {
             node.m.m = .{ mat[0..4].*, mat[4..8].*, mat[8..12].*, mat[12..16].* };
@@ -958,6 +966,7 @@ export fn frame() void {
     std.log.info("Rendering nodes..", .{});
 
     for (GLTFState.nodes.items) |node| {
+        std.log.info("Rendering: {s}", .{node.name});
         if (node.mesh) |mesh| {
             std.log.info("Primitives on node: {}", .{mesh.primitives.items.len});
             for (mesh.primitives.items) |primitive| {
