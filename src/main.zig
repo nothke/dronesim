@@ -984,8 +984,6 @@ export fn frame() void {
     sg.beginPass(.{ .action = state.pass_action, .swapchain = sglue.swapchain() });
     sg.applyPipeline(state.pip);
 
-    //sg.applyBindings(state.bind);
-
     std.log.info("Rendering nodes..", .{});
 
     for (GLTFState.nodes.items) |node| {
