@@ -52,7 +52,8 @@ const state = struct {
 
     var gpa: std.heap.GeneralPurposeAllocator(.{}) = undefined;
 
-    var error_tex_view: sg.View = undefined;
+    var checkerboard_tex_view: sg.View = undefined;
+    var white_tex_view: sg.View = undefined;
 };
 
 var configData = struct {
@@ -697,20 +698,33 @@ export fn init() void {
     // });
 
     // create a small checker-board image and texture view
-    state.error_tex_view = sg.makeView(.{
+    state.checkerboard_tex_view = sg.makeView(.{
         .texture = .{
             .image = sg.makeImage(.{
                 .width = 4,
                 .height = 4,
                 .data = init: {
                     var data = sg.ImageData{};
-                    // data.mip_levels[0] = sg.asRange(&[4 * 4]u32{
-                    //     0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
-                    //     0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
-                    //     0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
-                    //     0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
-                    // });
-                    data.mip_levels[0] = sg.asRange(&[_]u32{0xFFFFFFFF} ** (4 * 4));
+                    data.mip_levels[0] = sg.asRange(&[4 * 4]u32{
+                        0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
+                        0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
+                        0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
+                        0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
+                    });
+                    break :init data;
+                },
+            }),
+        },
+    });
+
+    state.white_tex_view = sg.makeView(.{
+        .texture = .{
+            .image = sg.makeImage(.{
+                .width = 1,
+                .height = 1,
+                .data = init: {
+                    var data = sg.ImageData{};
+                    data.mip_levels[0] = sg.asRange(&[_]u32{0xFFFFFFFF});
                     break :init data;
                 },
             }),
@@ -955,12 +969,12 @@ export fn frame() void {
                     if (material.texture) |texture| {
                         state.bind.views[shd.VIEW_tex] = texture.view;
                     } else {
-                        state.bind.views[shd.VIEW_tex] = state.error_tex_view;
+                        state.bind.views[shd.VIEW_tex] = state.white_tex_view;
                     }
 
                     color = material.color;
                 } else {
-                    state.bind.views[shd.VIEW_tex] = state.error_tex_view;
+                    state.bind.views[shd.VIEW_tex] = state.white_tex_view;
                     color = [4]f32{ 1, 0, 1, 1 };
                 }
 
