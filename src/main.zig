@@ -437,22 +437,15 @@ fn loadGLTF() !void {
 
             tex = &GLTFState.textures.items[gltfTexture.index];
             std.log.info("   - has color texture! Index: {}", .{gltfTexture.index});
+        } else {
+            std.log.info("   - no texture", .{});
         }
 
         try GLTFState.materials.append(alloc, .{
             .texture = tex,
             .color = col,
         });
-
-        std.log.info("    - last: {}", .{GLTFState.materials.getLast().texture.?.image.width});
     }
-
-    // primitive test:
-    std.log.info("Meshes: {}, Mesh[0] primitives: {}, attributes: {}", .{
-        gltf.data.meshes.len,
-        gltf.data.meshes[0].primitives.len,
-        gltf.data.meshes[0].primitives[0].attributes.len,
-    });
 
     // Mesh / Primitive
 
@@ -565,37 +558,9 @@ fn loadGLTF() !void {
                 .material = material,
             });
 
-            //std.log.info("Num of primitives: {}", .{mesh_ptr.primitives.items.len});
-            std.log.info("WTFFF! 1: {}", .{mesh_ptr.primitives.items[0].data.?.vertices.items.len});
-            std.log.info("WTFFF! 1: {}", .{mesh_ptr.primitives.items[0].data.?.vertices.items.len});
-
-            std.debug.assert(mesh_ptr.primitives.getLast().data != null);
-            std.debug.assert(mesh_ptr.primitives.getLast().material != null);
             std.debug.assert(mesh_data.vertices.items.len == vertices.items.len);
-            std.debug.assert(mesh_ptr.primitives.getLast().data.?.vertices.items.len == mesh_data.vertices.items.len);
-
-            std.log.info("mat: {any}", .{mesh_ptr.primitives.getLast().material});
-
-            {
-                const debug_data = mesh_ptr.primitives.items[mesh_ptr.primitives.items.len - 1].data.?;
-
-                std.log.info("len: {} == {} == {}", .{
-                    vertices.items.len,
-                    debug_data.vertices.items.len,
-                    mesh_ptr.primitives.getLast().data.?.vertices.items.len,
-                });
-
-                std.debug.assert(debug_data.vertices.items.len == vertices.items.len);
-            }
         } // for primitives
     } // for meshes
-
-    std.log.info("meshes: {}, primitives: {}, last prim: {any}", .{
-        GLTFState.meshes.items.len,
-        GLTFState.meshes.getLast().primitives.items.len,
-        GLTFState.meshes.getLast().primitives.items,
-    });
-    std.log.info("last mesh vert 0: {any}", .{GLTFState.meshes.getLast().primitives.items[0].data.?.vertices.items[0]});
 
     // Node
 
@@ -606,17 +571,19 @@ fn loadGLTF() !void {
             node.name = try alloc.dupeZ(u8, name);
         }
 
+        std.log.info("Node: '{s}'", .{node.name});
+
         if (gltf_node.matrix) |mat| {
             node.m.m = .{ mat[0..4].*, mat[4..8].*, mat[8..12].*, mat[12..16].* };
+            std.log.info("   -- found model matrix", .{});
         } else {
             const pos = mat4.translate(vec3.fromArr(gltf_node.translation));
-            const rot = mat4.identity(); // TODO: Add quaternion rotations
+            const rot = mat4.rotateByQuat(gltf_node.rotation);
             const scale = mat4.scale(vec3.fromArr(gltf_node.scale));
 
             node.m = pos.mul(rot).mul(scale);
 
-            std.log.info("Found object: {s}, pos: {any}, rot: {any}, scl: {any}", .{
-                gltf_node.name.?,
+            std.log.info("   -- pos: {any}, rot: {any}, scl: {any}", .{
                 gltf_node.translation,
                 gltf_node.rotation,
                 gltf_node.scale,
@@ -625,9 +592,9 @@ fn loadGLTF() !void {
 
         if (gltf_node.mesh) |meshi| {
             node.mesh = &GLTFState.meshes.items[meshi];
-            std.log.info("Has mesh index: {}", .{meshi});
+            std.log.info("   -- Has mesh index: {}", .{meshi});
         } else {
-            std.log.info("Not a mesh", .{});
+            std.log.info("   -- Not a mesh", .{});
         }
 
         try GLTFState.nodes.append(alloc, node);
@@ -979,12 +946,16 @@ export fn frame() void {
     for (GLTFState.nodes.items) |node| {
         if (node.mesh) |mesh| {
             for (mesh.primitives.items) |primitive| {
+                var color = [4]f32{ 1, 1, 1, 1 };
+
                 if (primitive.material) |material| {
                     if (material.texture) |texture| {
                         state.bind.views[shd.VIEW_tex] = texture.view;
                     } else {
                         // TODO: use white texture
                     }
+
+                    color = material.color;
                 } else {
                     // TODO: use white mat
                 }
@@ -999,6 +970,13 @@ export fn frame() void {
                 };
 
                 sg.applyUniforms(shd.UB_vs_params, sg.asRange(&vs_params));
+
+                const fs_params = shd.FsParams{
+                    .u_color = color,
+                };
+
+                sg.applyUniforms(shd.UB_fs_params, sg.asRange(&fs_params));
+
                 sg.draw(0, primitive.index_count, 1);
             }
         }

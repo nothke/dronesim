@@ -190,6 +190,43 @@ pub const Mat4 = extern struct {
         } };
     }
 
+    pub fn rotateByQuat(quat: [4]f32) Mat4 {
+        const qx = quat[0];
+        const qy = quat[1];
+        const qz = quat[2];
+        const qw = quat[3];
+
+        // From glm: https://github.com/g-truc/glm/blob/33b4a621a697a305bc3a7610d290677b96beb181/glm/gtc/quaternion.inl#L47
+        return Mat4{
+            .m = .{
+                .{
+                    1 - 2 * (qy * qy + qz * qz),
+                    2 * (qx * qy + qz * qw),
+                    2 * (qx * qz - qy * qw),
+                    0,
+                },
+                .{
+                    2 * (qx * qy - qz * qw),
+                    1 - 2 * (qx * qx + qz * qz),
+                    2 * (qy * qz + qx * qw),
+                    0,
+                },
+                .{
+                    2 * (qx * qz + qy * qw),
+                    2 * (qy * qz - qx * qw),
+                    1 - 2 * (qx * qx + qy * qy),
+                    0,
+                },
+                .{
+                    0,
+                    0,
+                    0,
+                    1,
+                },
+            },
+        };
+    }
+
     pub fn translate(translation: Vec3) Mat4 {
         var res = Mat4.identity();
         res.m[3][0] = translation.x;

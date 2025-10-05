@@ -30,12 +30,16 @@ void main() {
 layout(binding=0) uniform texture2D tex;
 layout(binding=0) uniform sampler smp;
 
+layout(binding=1) uniform fs_params {
+    vec4 u_color;
+};
+
 in vec4 color;
 in vec2 uv;
 out vec4 frag_color;
 
 void main() {
-    frag_color = texture(sampler2D(tex, smp), uv) * color;
+    frag_color = texture(sampler2D(tex, smp), uv) * color * u_color;
 }
 #pragma sokol @end
 
