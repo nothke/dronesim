@@ -327,14 +327,12 @@ const Primitive = struct {
 };
 
 const Mesh = struct {
-    primitives_buffer: [8]Primitive = undefined,
     primitives: std.ArrayList(Primitive) = undefined,
 
-    fn init() Mesh {
-        var mesh: Mesh = .{};
-        mesh.primitives = .initBuffer(&mesh.primitives_buffer);
-
-        return mesh;
+    fn init(alloc: std.mem.Allocator) !Mesh {
+        return Mesh{
+            .primitives = try .initCapacity(alloc, 8),
+        };
     }
 };
 
@@ -457,7 +455,7 @@ fn loadGLTF() !void {
         // const mesh_ptr = try GLTFState.meshes.addOne(alloc);
         // mesh_ptr.* = .init();
 
-        try GLTFState.meshes.append(alloc, .init());
+        try GLTFState.meshes.append(alloc, try .init(alloc));
         const mesh_ptr = &GLTFState.meshes.items[GLTFState.meshes.items.len - 1];
 
         std.debug.assert(mesh_ptr.primitives.items.len == 0);
@@ -986,7 +984,7 @@ export fn frame() void {
     sg.beginPass(.{ .action = state.pass_action, .swapchain = sglue.swapchain() });
     sg.applyPipeline(state.pip);
 
-    sg.applyBindings(state.bind);
+    //sg.applyBindings(state.bind);
 
     std.log.info("Rendering nodes..", .{});
 
