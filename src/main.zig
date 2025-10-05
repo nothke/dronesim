@@ -369,7 +369,7 @@ fn loadGLTF() !void {
 
     GLTFState.buff = try std.fs.cwd().readFileAllocOptions(
         alloc,
-        "art/testcube.glb",
+        "art/testcubes.glb",
         1024 * 1024,
         null,
         .@"4",
@@ -811,7 +811,7 @@ export fn init() void {
     // physics spawning
 
     // #DRONEINIT
-    state.droneBodyId = createBoxBody(body_interface, vec3.new(0.1, 0.05, 0.1), vec3.new(0, 1, 0), true) catch unreachable;
+    state.droneBodyId = createBoxBody(body_interface, vec3.new(0.1, 0.05, 0.1), vec3.new(0, 1, 20), true) catch unreachable;
 
     state.cubes = std.ArrayListUnmanaged(WorldCube).initBuffer(&state.cubesBuffer);
 
@@ -976,14 +976,9 @@ export fn frame() void {
     sg.beginPass(.{ .action = state.pass_action, .swapchain = sglue.swapchain() });
     sg.applyPipeline(state.pip);
 
-    std.log.info("Rendering nodes..", .{});
-
     for (GLTFState.nodes.items) |node| {
-        std.log.info("Rendering: {s}", .{node.name});
         if (node.mesh) |mesh| {
-            std.log.info("Primitives on node: {}", .{mesh.primitives.items.len});
             for (mesh.primitives.items) |primitive| {
-                std.log.info("Rendering mesh primitive ..", .{});
                 if (primitive.material) |material| {
                     if (material.texture) |texture| {
                         state.bind.views[shd.VIEW_tex] = texture.view;
@@ -992,13 +987,6 @@ export fn frame() void {
                     }
                 } else {
                     // TODO: use white mat
-                }
-
-                if (primitive.data) |data| {
-                    std.log.info("verts: {}, indices: {}", .{ data.vertices.items.len, data.indices.items.len });
-                } else {
-                    std.log.info("NO DATA FOUND ON PRIMITIVE", .{});
-                    continue;
                 }
 
                 state.bind.vertex_buffers[0] = primitive.vertex_buffer;
@@ -1016,9 +1004,9 @@ export fn frame() void {
         }
     }
 
-    for (state.cubes.items) |cube| {
-        drawCube(&vp, cube.pos, cube.size);
-    }
+    // for (state.cubes.items) |cube| {
+    //     drawCube(&vp, cube.pos, cube.size);
+    // }
 
     {
         // #GUI
