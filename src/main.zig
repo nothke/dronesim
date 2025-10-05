@@ -365,6 +365,8 @@ fn loadGLTF() !void {
 
     std.log.info("------------ LOADING GLTF -----------", .{});
 
+    // Load from buffer
+
     GLTFState.buff = try std.fs.cwd().readFileAllocOptions(
         alloc,
         "art/testcube.glb",
@@ -378,12 +380,14 @@ fn loadGLTF() !void {
 
     std.log.info("images: {}", .{gltf.data.images.len});
 
+    // Init
+
     GLTFState.meshes = try .initCapacity(alloc, 64);
     GLTFState.textures = try .initCapacity(alloc, 64);
     GLTFState.nodes = try .initCapacity(alloc, 64);
     GLTFState.materials = try .initCapacity(alloc, 64);
 
-    // Image
+    // Image / Texture
 
     for (gltf.data.images) |gltf_image| {
         const image = try zigimg.Image.fromMemory(alloc, gltf_image.data.?);
@@ -417,7 +421,8 @@ fn loadGLTF() !void {
         std.log.info("     -- view id: {}, bytes ptr {*}", .{ image_view.id, bytes.ptr });
     }
 
-    // #MATERIAL
+    // Material
+
     for (gltf.data.materials) |gltfMaterial| {
         std.log.info("", .{});
         std.log.info("Material: \"{s}\"", .{gltfMaterial.name.?});
@@ -449,7 +454,7 @@ fn loadGLTF() !void {
         gltf.data.meshes[0].primitives[0].attributes.len,
     });
 
-    // Meshes/Primitives
+    // Mesh / Primitive
 
     for (gltf.data.meshes) |gltf_mesh| {
         // const mesh_ptr = try GLTFState.meshes.addOne(alloc);
@@ -545,7 +550,7 @@ fn loadGLTF() !void {
             else
                 null;
 
-            try mesh_ptr.primitives.appendBounded(.{
+            mesh_ptr.primitives.appendAssumeCapacity(.{
                 .vertex_buffer = sg.makeBuffer(.{
                     .data = sg.asRange(vertices.items),
                 }),
@@ -592,7 +597,8 @@ fn loadGLTF() !void {
     });
     std.log.info("last mesh vert 0: {any}", .{GLTFState.meshes.getLast().primitives.items[0].data.?.vertices.items[0]});
 
-    // Nodes
+    // Node
+
     for (gltf.data.nodes) |gltf_node| {
         var node: Node = .{};
 
