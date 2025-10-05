@@ -562,17 +562,28 @@ fn loadGLTF() !void {
                 .material = material,
             });
 
+            //std.log.info("Num of primitives: {}", .{mesh_ptr.primitives.items.len});
+            std.log.info("WTFFF! 1: {}", .{mesh_ptr.primitives.items[0].data.?.vertices.items.len});
+            std.log.info("WTFFF! 1: {}", .{mesh_ptr.primitives.items[0].data.?.vertices.items.len});
+
             std.debug.assert(mesh_ptr.primitives.getLast().data != null);
             std.debug.assert(mesh_ptr.primitives.getLast().material != null);
+            std.debug.assert(mesh_data.vertices.items.len == vertices.items.len);
+            std.debug.assert(mesh_ptr.primitives.getLast().data.?.vertices.items.len == mesh_data.vertices.items.len);
 
             std.log.info("mat: {any}", .{mesh_ptr.primitives.getLast().material});
 
-            const debug_data = mesh_ptr.primitives.items[mesh_ptr.primitives.items.len - 1].data.?;
-            std.log.info("len: {} == {} == {}", .{
-                vertices.items.len,
-                debug_data.vertices.items.len,
-                mesh_ptr.primitives.getLast().data.?.vertices.items.len,
-            });
+            {
+                const debug_data = mesh_ptr.primitives.items[mesh_ptr.primitives.items.len - 1].data.?;
+
+                std.log.info("len: {} == {} == {}", .{
+                    vertices.items.len,
+                    debug_data.vertices.items.len,
+                    mesh_ptr.primitives.getLast().data.?.vertices.items.len,
+                });
+
+                std.debug.assert(debug_data.vertices.items.len == vertices.items.len);
+            }
         } // for primitives
     } // for meshes
 
