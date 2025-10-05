@@ -704,12 +704,13 @@ export fn init() void {
                 .height = 4,
                 .data = init: {
                     var data = sg.ImageData{};
-                    data.mip_levels[0] = sg.asRange(&[4 * 4]u32{
-                        0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
-                        0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
-                        0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
-                        0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
-                    });
+                    // data.mip_levels[0] = sg.asRange(&[4 * 4]u32{
+                    //     0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
+                    //     0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
+                    //     0xFFFFFFFF, 0x00000000, 0xFFFFFFFF, 0x00000000,
+                    //     0x00000000, 0xFFFFFFFF, 0x00000000, 0xFFFFFFFF,
+                    // });
+                    data.mip_levels[0] = sg.asRange(&[_]u32{0xFFFFFFFF} ** (4 * 4));
                     break :init data;
                 },
             }),
@@ -941,7 +942,7 @@ export fn frame() void {
 
     // vs params
 
-    // rendering
+    // rendering #RENDER #DRAW
     sg.beginPass(.{ .action = state.pass_action, .swapchain = sglue.swapchain() });
     sg.applyPipeline(state.pip);
 
@@ -959,7 +960,8 @@ export fn frame() void {
 
                     color = material.color;
                 } else {
-                    // TODO: use white mat
+                    state.bind.views[shd.VIEW_tex] = state.error_tex_view;
+                    color = [4]f32{ 1, 0, 1, 1 };
                 }
 
                 state.bind.vertex_buffers[0] = primitive.vertex_buffer;
