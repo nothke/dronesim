@@ -348,6 +348,7 @@ const MeshData = struct {
 
 const Node = struct {
     m: mat4 = .identity(),
+    // if node has no mesh, its a dummy
     mesh: ?*Mesh = null,
 };
 
@@ -391,7 +392,10 @@ fn loadGLTF() !void {
     for (gltf.data.images) |gltf_image| {
         const image = try zigimg.Image.fromMemory(alloc, gltf_image.data.?);
 
-        std.log.info("image width {}, height {}, pixel format {}", .{ image.width, image.height, image.pixelFormat() });
+        const bytes = image.pixels.asConstBytes(); // try alloc.dupe(u8, image.pixels.asConstBytes());
+
+        std.log.info("Image {}: {s}", .{ GLTFState.textures.items.len, gltf_image.name orelse "NO NAME" });
+        std.log.info("     -- width {}, height {}, format {}", .{ image.width, image.height, image.pixelFormat() });
 
         const image_view = sg.makeView(.{
             .texture = .{
@@ -400,7 +404,7 @@ fn loadGLTF() !void {
                     .height = @intCast(image.height),
                     .data = init: {
                         var data = sg.ImageData{};
-                        data.mip_levels[0] = sg.asRange(image.pixels.asConstBytes());
+                        data.mip_levels[0] = sg.asRange(bytes);
                         break :init data;
                     },
                 }),
@@ -414,7 +418,7 @@ fn loadGLTF() !void {
             .view = image_view,
         });
 
-        std.log.info("image id: {}", .{image_view.id});
+        std.log.info("     -- view id: {}, bytes ptr {*}", .{ image_view.id, bytes.ptr });
     }
 
     // #MATERIAL
@@ -436,6 +440,8 @@ fn loadGLTF() !void {
             .texture = tex,
             .color = col,
         });
+
+        std.log.info("    - last: {}", .{GLTFState.materials.getLast().texture.?.image.width});
     }
 
     // primitive test:
@@ -451,7 +457,9 @@ fn loadGLTF() !void {
         const mesh_ptr = try GLTFState.meshes.addOne(alloc);
         mesh_ptr.* = .init();
 
-        for (gltf_mesh.primitives) |primitive| {
+        std.debug.assert(mesh_ptr.primitives.items.len == 0);
+
+        for (gltf_mesh.primitives) |gltf_primitive| {
             var mesh_data = try alloc.create(MeshData);
 
             mesh_data.* = .{
@@ -462,7 +470,7 @@ fn loadGLTF() !void {
             const vertices = &mesh_data.vertices;
             const indices = &mesh_data.indices;
 
-            for (primitive.attributes) |attribute| {
+            for (gltf_primitive.attributes) |attribute| {
                 switch (attribute) {
                     .position => |accessor_index| {
                         const accessor = gltf.data.accessors[accessor_index];
@@ -510,7 +518,7 @@ fn loadGLTF() !void {
                 }
             }
 
-            const accessor = gltf.data.accessors[primitive.indices.?];
+            const accessor = gltf.data.accessors[gltf_primitive.indices.?];
             if (accessor.component_type == .unsigned_short) {
                 const view = try gltf.getDataFromBufferView(u16, alloc, accessor, gltf.glb_binary.?);
                 try indices.ensureTotalCapacity(alloc, view.len);
@@ -531,6 +539,11 @@ fn loadGLTF() !void {
                 @panic("u32 indices are not supported");
             }
 
+            const material: ?*Material = if (gltf_primitive.material) |mati|
+                &GLTFState.materials.items[mati]
+            else
+                null;
+
             try mesh_ptr.primitives.appendBounded(.{
                 .vertex_buffer = sg.makeBuffer(.{
                     .data = sg.asRange(vertices.items),
@@ -543,9 +556,14 @@ fn loadGLTF() !void {
                 ),
                 .index_count = @intCast(indices.items.len),
                 .data = mesh_data,
+                .material = material,
             });
+
+            std.log.info("len: {}", .{mesh_ptr.primitives.getLast().data.?.vertices.items.len});
         } // for primitives
     } // for meshes
+
+    std.log.info("Last mesh vert 0: {any}", .{GLTFState.meshes.getLast().primitives.items[0].data.?.vertices.items[0]});
 
     // Nodes
     for (gltf.data.nodes) |gltf_node| {
@@ -579,6 +597,8 @@ fn loadGLTF() !void {
     }
 
     std.log.info("------------ Finished loading GLTF -----------", .{});
+
+    std.log.info("Vert 0: {any}", .{GLTFState.nodes.items[0].mesh.?.primitives.items[0].data.?.vertices.items[0]});
 }
 
 fn deinitGLTF() void {
@@ -933,11 +953,15 @@ export fn frame() void {
     sg.beginPass(.{ .action = state.pass_action, .swapchain = sglue.swapchain() });
     sg.applyPipeline(state.pip);
 
+    sg.applyBindings(state.bind);
+
     std.log.info("Rendering nodes..", .{});
 
     for (GLTFState.nodes.items) |node| {
         if (node.mesh) |mesh| {
+            std.log.info("Primitives on node: {}", .{mesh.primitives.items.len});
             for (mesh.primitives.items) |primitive| {
+                std.log.info("Rendering mesh primitive ..", .{});
                 if (primitive.material) |material| {
                     if (material.texture) |texture| {
                         state.bind.views[shd.VIEW_tex] = texture.view;
@@ -946,6 +970,13 @@ export fn frame() void {
                     }
                 } else {
                     // TODO: use white mat
+                }
+
+                if (primitive.data) |data| {
+                    std.log.info("verts: {}, indices: {}", .{ data.vertices.items.len, data.indices.items.len });
+                } else {
+                    std.log.info("NO DATA FOUND ON PRIMITIVE", .{});
+                    continue;
                 }
 
                 state.bind.vertex_buffers[0] = primitive.vertex_buffer;
