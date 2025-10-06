@@ -14,8 +14,8 @@ pub const Vertex = extern struct {
     y: f32,
     z: f32,
     color: u32,
-    u: i16,
-    v: i16,
+    u: f32,
+    v: f32,
 };
 
 pub const Texture = struct {

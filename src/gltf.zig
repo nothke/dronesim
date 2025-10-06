@@ -211,8 +211,10 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
                         std.debug.assert(view.len == vertices.items.len * 2);
 
                         for (vertices.items, 0..) |*vertex, i| {
-                            vertex.u = @intFromFloat(view[i * 2 + 0] * 32767);
-                            vertex.v = @intFromFloat(view[i * 2 + 1] * 32767);
+                            // vertex.u = @intFromFloat(view[i * 2 + 0] * 32767);
+                            // vertex.v = @intFromFloat(view[i * 2 + 1] * 32767);
+                            vertex.u = view[i * 2 + 0];
+                            vertex.v = view[i * 2 + 1];
                         }
                     },
                     else => {},

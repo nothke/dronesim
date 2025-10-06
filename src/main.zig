@@ -409,7 +409,7 @@ fn initSystems() !void {
 
         const gltf_buffer: []align(4) const u8 = try std.fs.cwd().readFileAllocOptions(
             state.gpa.allocator(),
-            "art/WaterBottle.glb",
+            "art/testcubes.glb",
             std.math.maxInt(usize),
             null,
             .@"4",
@@ -442,7 +442,7 @@ export fn init() void {
             var l = sg.VertexLayoutState{};
             l.attrs[shd.ATTR_texcube_pos].format = .FLOAT3;
             l.attrs[shd.ATTR_texcube_color0].format = .UBYTE4N;
-            l.attrs[shd.ATTR_texcube_texcoord0].format = .SHORT2N;
+            l.attrs[shd.ATTR_texcube_texcoord0].format = .FLOAT2;
             break :init l;
         },
         .index_type = .UINT16,
