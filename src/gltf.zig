@@ -1,23 +1,27 @@
 const std = @import("std");
+
 const zgltf = @import("zgltf");
-const main = @import("main.zig");
 const zigimg = @import("zigimg");
 const sg = @import("sokol").gfx;
+
 const math = @import("math.zig");
 
-const AssetBlock = main.AssetBlock;
-const Texture = main.Texture;
-const Mesh = main.Mesh;
-const Primitive = main.Primitive;
-const Node = main.Node;
-const MeshData = main.MeshData;
-const Material = main.Material;
+const asset = @import("asset.zig");
+const AssetBlock = asset.AssetBlock;
+const Texture = asset.Texture;
+const Mesh = asset.Mesh;
+const Primitive = asset.Primitive;
+const Node = asset.Node;
+const MeshData = asset.MeshData;
+const Material = asset.Material;
+
+const log = std.log.info;
 
 pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBlock {
     var gltf = zgltf.Gltf.init(alloc);
     defer gltf.deinit();
 
-    std.log.info("------------ LOADING GLTF -----------", .{});
+    log("------------ LOADING GLTF -----------", .{});
 
     // Load from buffer
 
@@ -33,8 +37,8 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
 
         const bytes = image.pixels.asConstBytes(); // try alloc.dupe(u8, image.pixels.asConstBytes());
 
-        std.log.info("Image {}: {s}", .{ asset_block.textures.items.len, gltf_image.name orelse "NO NAME" });
-        std.log.info("     -- width {}, height {}, format {}", .{ image.width, image.height, image.pixelFormat() });
+        log("Image {}: {s}", .{ asset_block.textures.items.len, gltf_image.name orelse "NO NAME" });
+        log("     -- width {}, height {}, format {}", .{ image.width, image.height, image.pixelFormat() });
 
         const image_view = sg.makeView(.{
             .texture = .{
@@ -57,17 +61,17 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
             .view = image_view,
         });
 
-        std.log.info("     -- view id: {}, bytes ptr {*}", .{ image_view.id, bytes.ptr });
+        log("     -- view id: {}, bytes ptr {*}", .{ image_view.id, bytes.ptr });
     }
 
     // Material
 
     for (gltf.data.materials) |gltfMaterial| {
-        std.log.info("", .{});
-        std.log.info("Material: \"{s}\"", .{gltfMaterial.name.?});
+        log("", .{});
+        log("Material: \"{s}\"", .{gltfMaterial.name.?});
 
         const col = gltfMaterial.metallic_roughness.base_color_factor;
-        std.log.info("   - color {any}", .{col});
+        log("   - color {any}", .{col});
 
         var tex: ?*Texture = null;
 
@@ -75,9 +79,9 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
             std.debug.assert(asset_block.textures.items.len > gltfTexture.index);
 
             tex = &asset_block.textures.items[gltfTexture.index];
-            std.log.info("   - has color texture! Index: {}", .{gltfTexture.index});
+            log("   - has color texture! Index: {}", .{gltfTexture.index});
         } else {
-            std.log.info("   - no texture", .{});
+            log("   - no texture", .{});
         }
 
         try asset_block.materials.append(alloc, .{
@@ -97,6 +101,8 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
 
         std.debug.assert(mesh_ptr.primitives.items.len == 0);
 
+        log("Mesh:", .{});
+
         for (gltf_mesh.primitives) |gltf_primitive| {
             var mesh_data = try alloc.create(MeshData);
 
@@ -107,6 +113,8 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
 
             const vertices = &mesh_data.vertices;
             const indices = &mesh_data.indices;
+
+            log(" -- Primitive", .{});
 
             for (gltf_primitive.attributes) |attribute| {
                 switch (attribute) {
@@ -122,7 +130,7 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
 
                         try vertices.ensureTotalCapacity(alloc, vertexCount);
 
-                        std.log.info("    -- VERTICES count: {}", .{vertexCount});
+                        log("    -- VERTICES count: {}", .{vertexCount});
 
                         for (0..vertexCount) |vertexIndex| {
                             vertices.appendAssumeCapacity(.{
@@ -144,8 +152,6 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
                         const view = try gltf.getDataFromBufferView(f32, alloc, accessor, gltf.glb_binary.?);
                         defer alloc.free(view);
 
-                        std.log.info("      -- uvs: {} == {} ?", .{ vertices.items.len, accessor.count });
-
                         std.debug.assert(vertices.items.len > 0);
                         std.debug.assert(view.len == vertices.items.len * 2);
 
@@ -165,7 +171,7 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
 
                 try indices.ensureTotalCapacity(alloc, view.len);
 
-                std.log.info("    -- INDICES: count: {}, triangles: {}, type: short", .{ view.len, @divExact(view.len, 3) });
+                log("    -- INDICES: count: {}, triangles: {}, type: short", .{ view.len, @divExact(view.len, 3) });
 
                 var i: usize = 0;
                 while (i < view.len) : (i += 3) {
@@ -214,11 +220,11 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
             node.name = try alloc.dupeZ(u8, name);
         }
 
-        std.log.info("Node: '{s}'", .{node.name});
+        log("Node: '{s}'", .{node.name});
 
         if (gltf_node.matrix) |mat| {
             node.m.m = .{ mat[0..4].*, mat[4..8].*, mat[8..12].*, mat[12..16].* };
-            std.log.info("   -- found model matrix", .{});
+            log("   -- found model matrix", .{});
         } else {
             const mat4 = math.Mat4;
             const vec3 = math.Vec3;
@@ -229,7 +235,7 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
 
             node.m = pos.mul(rot).mul(scale);
 
-            std.log.info("   -- pos: {any}, rot: {any}, scl: {any}", .{
+            log("   -- pos: {any}, rot: {any}, scl: {any}", .{
                 gltf_node.translation,
                 gltf_node.rotation,
                 gltf_node.scale,
@@ -238,17 +244,17 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
 
         if (gltf_node.mesh) |meshi| {
             node.mesh = &asset_block.meshes.items[meshi];
-            std.log.info("   -- Has mesh index: {}", .{meshi});
+            log("   -- Has mesh index: {}", .{meshi});
         } else {
-            std.log.info("   -- Not a mesh", .{});
+            log("   -- Not a mesh", .{});
         }
 
         try asset_block.nodes.append(alloc, node);
     }
 
-    std.log.info("------------ Finished loading GLTF -----------", .{});
+    log("------------ Finished loading GLTF -----------", .{});
 
-    std.log.info("Vert 0: {any}", .{asset_block.nodes.items[0].mesh.?.primitives.items[0].data.?.vertices.items[0]});
+    log("Vert 0: {any}", .{asset_block.nodes.items[0].mesh.?.primitives.items[0].data.?.vertices.items[0]});
 
     return asset_block;
 }
@@ -256,7 +262,7 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
 pub fn deinit(asset_block: *AssetBlock, alloc: std.mem.Allocator) void {
     for (asset_block.textures.items) |*texture| {
         texture.image.deinit(alloc);
-        std.log.info("deiniting texture", .{});
+        log("deiniting texture", .{});
     }
 
     for (asset_block.nodes.items) |*node| {
