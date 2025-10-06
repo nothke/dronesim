@@ -26,6 +26,14 @@ pub const Texture = struct {
 pub const Material = struct {
     color: [4]f32,
     texture: ?*Texture,
+
+    pub fn black() Material {
+        return .{ .color = .{ 0, 0, 0, 1 }, .texture = null };
+    }
+
+    pub fn white() Material {
+        return .{ .color = .{ 1, 1, 1, 1 }, .texture = null };
+    }
 };
 
 pub const MeshData = struct {
