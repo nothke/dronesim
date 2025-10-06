@@ -15,7 +15,7 @@ const Node = asset.Node;
 const MeshData = asset.MeshData;
 const Material = asset.Material;
 
-const log = std.log.info;
+const log = std.log.debug;
 
 pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBlock {
     var gltf = zgltf.Gltf.init(alloc);
@@ -253,8 +253,6 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
     }
 
     log("------------ Finished loading GLTF -----------", .{});
-
-    log("Vert 0: {any}", .{asset_block.nodes.items[0].mesh.?.primitives.items[0].data.?.vertices.items[0]});
 
     return asset_block;
 }
