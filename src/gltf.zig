@@ -44,11 +44,8 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
         var image_data: []const u8 = undefined;
 
         if (gltf_image.uri) |uri| {
-            log("URI: {s}", .{uri});
             const startIndex = std.mem.indexOf(u8, uri, ",").?;
             const input_string = uri[startIndex + 1 ..];
-
-            log("URI: {s}", .{input_string});
 
             const decoder = std.base64.standard.Decoder;
             const binSize = try decoder.calcSizeForSlice(input_string);
@@ -95,16 +92,16 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
 
     // Material
 
-    for (gltf.data.materials) |gltfMaterial| {
+    for (gltf.data.materials) |gltf_material| {
         log("", .{});
-        log("Material: \"{s}\"", .{gltfMaterial.name.?});
+        log("Material: \"{s}\"", .{gltf_material.name orelse ""});
 
-        const col = gltfMaterial.metallic_roughness.base_color_factor;
+        const col = gltf_material.metallic_roughness.base_color_factor;
         log("   - color {any}", .{col});
 
         var tex: ?*Texture = null;
 
-        if (gltfMaterial.metallic_roughness.base_color_texture) |gltfTexture| {
+        if (gltf_material.metallic_roughness.base_color_texture) |gltfTexture| {
             std.debug.assert(asset_block.textures.items.len > gltfTexture.index);
 
             tex = &asset_block.textures.items[gltfTexture.index];
