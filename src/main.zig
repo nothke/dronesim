@@ -402,24 +402,6 @@ fn initSystems() !void {
     // Ground
     createBox(body_interface, vec3.zero(), vec3.new(1000, 1, 1000));
 
-    // createBox(body_interface, vec3.new(0, 5, 10), vec3.new(10, 10, 10));
-    // createBox(body_interface, vec3.new(0, 5, -10), vec3.new(10, 10, 10));
-    // createBox(body_interface, vec3.new(5, 5, -40), vec3.new(10, 10, 10));
-    // createBox(body_interface, vec3.new(-5, 5, -30), vec3.new(10, 10, 10));
-
-    // var pcg = std.Random.Pcg.init(234583423);
-    // const r = pcg.random();
-
-    // const range = 1000;
-
-    // for (0..800) |_| {
-    //     createBox(
-    //         body_interface,
-    //         vec3.new(-500 + r.float(f32) * range, 20 + r.float(f32) * 20, -500 + r.float(f32) * range),
-    //         vec3.new(1 + r.float(f32) * 6, 50 + r.float(f32) * 50, 1 + r.float(f32) * 6),
-    //     );
-    // }
-
     // Load map from gltf
 
     {
@@ -691,14 +673,6 @@ export fn frame() void {
         _ = ig.igSliderFloat("pitch", &pitchAccel, -1, 1);
         _ = ig.igSliderFloat("yaw", &yawAccel, -1, 1);
         _ = ig.igSliderFloat("throttle", &yAccel, 0, 1);
-
-        // const imgPtr = @as(*const anyopaque, @ptrCast(GLTFState.image.pixels.asConstBytes().ptr));
-        // const imgPtr: *anyopaque = @ptrFromInt(GLTFState.image_view.id);
-        // ig.ImTextureData_GetTexRef(GLTFState.image.))
-        // ig.igImage(.{ ._TexID = GLTFState.image_view.id }, .{
-        //     .x = @floatFromInt(GLTFState.image.width),
-        //     .y = @floatFromInt(GLTFState.image.height),
-        // });
     }
 
     simgui.render();
@@ -784,8 +758,6 @@ fn processConfigLine(key: []const u8, value: []const u8) !void {
                     if (eql(actionName, field.name)) {
                         const suffix = afterCat[axisi + 1 ..];
 
-                        // std.log.info("aftercat: '{s}', suffix: '{s}'", .{ afterCat, suffix });
-
                         if (eql(suffix, "id")) {
                             @field(axisBindings, field.name).id = try std.fmt.parseInt(u8, value, 10);
                         } else if (eql(suffix, "deadzone")) {
@@ -795,8 +767,6 @@ fn processConfigLine(key: []const u8, value: []const u8) !void {
                 }
             }
         } else if (eql(category, "key")) {
-            // std.log.info("found key: {s}", .{afterCat});
-
             var buff = std.mem.zeroes([32]u8);
             const val = std.ascii.upperString(&buff, value);
 
