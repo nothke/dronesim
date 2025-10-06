@@ -123,7 +123,7 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
             const vertices = &mesh_data.vertices;
             const indices = &mesh_data.indices;
 
-            log(" -- Primitive", .{});
+            log(" -- Primitive - mode: {}", .{gltf_primitive.mode});
 
             for (gltf_primitive.attributes) |attribute| {
                 switch (attribute) {
@@ -173,27 +173,33 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
                 }
             }
 
-            const accessor = gltf.data.accessors[gltf_primitive.indices.?];
-            if (accessor.component_type == .unsigned_short) {
-                const view = try gltf.getDataFromBufferView(u16, alloc, accessor, gltf.glb_binary.?);
-                defer alloc.free(view);
+            if (gltf_primitive.indices) |gltf_indices_index| {
+                const accessor = gltf.data.accessors[gltf_indices_index];
 
-                try indices.ensureTotalCapacity(alloc, view.len);
+                if (accessor.component_type == .unsigned_short) {
+                    const view = try gltf.getDataFromBufferView(u16, alloc, accessor, gltf.glb_binary.?);
+                    defer alloc.free(view);
 
-                log("    -- INDICES: count: {}, triangles: {}, type: short", .{ view.len, @divExact(view.len, 3) });
+                    try indices.ensureTotalCapacity(alloc, view.len);
 
-                var i: usize = 0;
-                while (i < view.len) : (i += 3) {
-                    indices.appendAssumeCapacity(@intCast(view[i + 1]));
-                    indices.appendAssumeCapacity(@intCast(view[i + 0]));
-                    indices.appendAssumeCapacity(@intCast(view[i + 2]));
+                    log("    -- INDICES: count: {}, triangles: {}, type: short", .{ view.len, @divExact(view.len, 3) });
+
+                    for (view) |vi| {
+                        indices.appendAssumeCapacity(vi);
+                    }
+                } else if (accessor.component_type == .unsigned_integer) {
+                    @panic("u32 indices are not supported");
                 }
+            } else {
+                if (gltf_primitive.mode == .triangles) {
+                    try indices.ensureTotalCapacity(alloc, vertices.items.len);
 
-                // for (intView) |vi| {
-                //     try indices.append(alloc, @intCast(vi));
-                // }
-            } else if (accessor.component_type == .unsigned_integer) {
-                @panic("u32 indices are not supported");
+                    for (0..vertices.items.len) |i| {
+                        indices.appendAssumeCapacity(@intCast(i));
+                    }
+                } else {
+                    log("Non indexed rendering not supported.", .{});
+                }
             }
 
             const material: ?*Material = if (gltf_primitive.material) |mati|

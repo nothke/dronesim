@@ -409,7 +409,7 @@ fn initSystems() !void {
 
         const gltf_buffer: []align(4) const u8 = try std.fs.cwd().readFileAllocOptions(
             state.gpa.allocator(),
-            "art/testcubes.glb",
+            "art/Duck.glb",
             1024 * 1024,
             null,
             .@"4",
@@ -451,6 +451,7 @@ export fn init() void {
             .write_enabled = true,
         },
         .cull_mode = .BACK,
+        .face_winding = .CCW,
     });
 
     // pass action for clearing the frame buffer
