@@ -41,7 +41,8 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
     // Image / Texture
 
     for (gltf.data.images) |gltf_image| {
-        const image = try zigimg.Image.fromMemory(alloc, gltf_image.data.?);
+        var image = try zigimg.Image.fromMemory(alloc, gltf_image.data.?);
+        try image.convert(alloc, .rgba32);
 
         const bytes = image.pixels.asConstBytes(); // try alloc.dupe(u8, image.pixels.asConstBytes());
 
