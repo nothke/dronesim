@@ -5,7 +5,7 @@ const sg = @import("sokol").gfx;
 const Mesh = main.Mesh;
 const Vertex = main.Vertex;
 
-fn createCubeMesh(alloc: std.mem.Allocator) !Mesh {
+pub fn createCubeMesh(alloc: std.mem.Allocator) !Mesh {
     const cs: f32 = 1;
 
     var mesh = try Mesh.init(alloc);

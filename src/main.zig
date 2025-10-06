@@ -89,7 +89,7 @@ const WorldCube = struct {
 };
 
 // a vertex struct with position, color and uv-coords
-const Vertex = extern struct { x: f32, y: f32, z: f32, color: u32, u: i16, v: i16 };
+pub const Vertex = extern struct { x: f32, y: f32, z: f32, color: u32, u: i16, v: i16 };
 
 // Physics structs MARK: physics
 
@@ -355,6 +355,12 @@ pub const Mesh = struct {
     pub fn deinit(self: *Mesh, alloc: std.mem.Allocator) void {
         self.primitives.deinit(alloc);
     }
+
+    fn setMaterial(self: *Mesh, material: *Material) void {
+        for (self.primitives.items) |*prim| {
+            prim.material = material;
+        }
+    }
 };
 
 pub const Node = struct {
@@ -395,6 +401,9 @@ pub const AssetBlock = struct {
 
 var asset_block: AssetBlock = .{};
 
+var cube_mesh: Mesh = undefined;
+var cube_mat: Material = undefined;
+
 // #INIT MARK: init()
 export fn init() void {
     sg.setup(.{
@@ -426,6 +435,18 @@ export fn init() void {
     defer state.gpa.allocator().free(gltf_buffer);
 
     asset_block = gltf.load(state.gpa.allocator(), gltf_buffer) catch unreachable;
+
+    const gpa = state.gpa.allocator();
+    cube_mesh = @import("cube.zig").createCubeMesh(gpa) catch unreachable;
+    cube_mat = .{ .color = .{ 0, 1, 0, 1 }, .texture = null };
+    cube_mesh.setMaterial(&cube_mat);
+
+    const cube_node = Node{
+        .mesh = &cube_mesh,
+        .m = mat4.translate(.{ .x = 5 }),
+    };
+
+    asset_block.nodes.append(gpa, cube_node) catch unreachable;
 
     // create a small checker-board image and texture view
     state.checkerboard_tex_view = sg.makeView(.{
