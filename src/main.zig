@@ -499,6 +499,7 @@ fn loadGLTF() !void {
                     .position => |accessor_index| {
                         const accessor = gltf.data.accessors[accessor_index];
                         const view = try gltf.getDataFromBufferView(f32, alloc, accessor, gltf.glb_binary.?);
+                        defer alloc.free(view);
 
                         std.debug.assert(accessor.component_type == .float);
                         std.debug.assert(accessor.type == .vec3);
@@ -527,6 +528,7 @@ fn loadGLTF() !void {
                         std.debug.assert(accessor.type == .vec2);
 
                         const view = try gltf.getDataFromBufferView(f32, alloc, accessor, gltf.glb_binary.?);
+                        defer alloc.free(view);
 
                         std.log.info("      -- uvs: {} == {} ?", .{ vertices.items.len, accessor.count });
 
@@ -545,6 +547,8 @@ fn loadGLTF() !void {
             const accessor = gltf.data.accessors[gltf_primitive.indices.?];
             if (accessor.component_type == .unsigned_short) {
                 const view = try gltf.getDataFromBufferView(u16, alloc, accessor, gltf.glb_binary.?);
+                defer alloc.free(view);
+
                 try indices.ensureTotalCapacity(alloc, view.len);
 
                 std.log.info("    -- INDICES: count: {}, triangles: {}, type: short", .{ view.len, @divExact(view.len, 3) });
