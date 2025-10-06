@@ -15,6 +15,14 @@ const Node = asset.Node;
 const MeshData = asset.MeshData;
 const Material = asset.Material;
 
+// pub fn log(
+//     comptime format: []const u8,
+//     args: anytype,
+// ) void {
+//     _ = format;
+//     _ = args;
+// }
+
 const log = std.log.debug;
 
 pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBlock {
