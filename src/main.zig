@@ -313,6 +313,7 @@ fn gamepadOnAxisMove(
 
 var asset_block: AssetBlock = .{};
 
+// MARK: initSystems()
 fn initSystems() !void {
 
     // Gamepad
@@ -749,14 +750,16 @@ export fn input(event: ?*const sapp.Event) void {
 
 // MARK: cleanup()
 export fn cleanup() void {
-    std.log.info("Cleanup!", .{});
+    std.log.debug("Cleanup!", .{});
 
-    gltf.deinit(&asset_block, state.gpa.allocator());
+    asset_block.deinit(state.gpa.allocator());
     _ = state.gpa.deinit();
 
     sg.shutdown();
     phy.deinit();
 }
+
+// MARK: Config
 
 fn eql(left: []const u8, right: []const u8) bool {
     return std.mem.eql(u8, left, right);

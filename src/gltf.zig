@@ -264,24 +264,3 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
 
     return asset_block;
 }
-
-pub fn deinit(asset_block: *AssetBlock, alloc: std.mem.Allocator) void {
-    for (asset_block.textures.items) |*texture| {
-        texture.image.deinit(alloc);
-        log("deiniting texture", .{});
-    }
-
-    for (asset_block.nodes.items) |*node| {
-        node.freeName(alloc);
-    }
-
-    for (asset_block.meshes.items) |*mesh| {
-        for (mesh.primitives.items) |*primitive| {
-            primitive.freeMeshData(alloc);
-        }
-
-        mesh.primitives.deinit(alloc);
-    }
-
-    asset_block.deinit(alloc);
-}

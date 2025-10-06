@@ -107,10 +107,32 @@ pub const AssetBlock = struct {
         self.materials = try .initCapacity(alloc, 64);
     }
 
-    pub fn deinit(self: *AssetBlock, alloc: std.mem.Allocator) void {
+    /// Only deinits top-level lists
+    pub fn deinitLists(self: *AssetBlock, alloc: std.mem.Allocator) void {
         self.nodes.deinit(alloc);
         self.meshes.deinit(alloc);
         self.textures.deinit(alloc);
         self.materials.deinit(alloc);
+    }
+
+    /// Full deinit of all assets
+    pub fn deinit(asset_block: *AssetBlock, alloc: std.mem.Allocator) void {
+        for (asset_block.textures.items) |*texture| {
+            texture.image.deinit(alloc);
+        }
+
+        for (asset_block.nodes.items) |*node| {
+            node.freeName(alloc);
+        }
+
+        for (asset_block.meshes.items) |*mesh| {
+            for (mesh.primitives.items) |*primitive| {
+                primitive.freeMeshData(alloc);
+            }
+
+            mesh.primitives.deinit(alloc);
+        }
+
+        asset_block.deinitLists(alloc);
     }
 };
