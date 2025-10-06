@@ -403,12 +403,9 @@ fn loadGLTF() !void {
         .@"4",
         null,
     );
+    defer alloc.free(gltf_buffer);
 
     try gltf.parse(gltf_buffer);
-
-    std.log.info("images: {}", .{gltf.data.images.len});
-
-    // Init
 
     try asset_block.init(alloc);
 
@@ -636,8 +633,6 @@ fn loadGLTF() !void {
 
 fn deinitGLTF() void {
     const alloc = state.gpa.allocator();
-
-    alloc.free(gltf_buffer);
 
     for (asset_block.textures.items) |*texture| {
         texture.image.deinit(alloc);
