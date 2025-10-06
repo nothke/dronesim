@@ -313,39 +313,17 @@ fn gamepadOnAxisMove(
 
 var asset_block: AssetBlock = .{};
 
-// #INIT MARK: init()
-export fn init() void {
-    sg.setup(.{
-        .environment = sglue.environment(),
-        .logger = .{ .func = slog.func },
-    });
+fn initSystems() !void {
 
-    simgui.setup(.{
-        .logger = .{ .func = slog.func },
-    });
+    // Gamepad
 
     c.Gamepad_deviceAttachFunc(gamepadOnDeviceAttached, null);
     c.Gamepad_deviceRemoveFunc(gamepadOnDeviceDetached, null);
     c.Gamepad_axisMoveFunc(gamepadOnAxisMove, null);
     c.Gamepad_init();
 
-    // gltf
+    // Create debug assets
 
-    state.gpa = .init;
-
-    const gltf_buffer: []align(4) const u8 = std.fs.cwd().readFileAllocOptions(
-        state.gpa.allocator(),
-        "art/testcubes.glb",
-        1024 * 1024,
-        null,
-        .@"4",
-        null,
-    ) catch unreachable;
-    defer state.gpa.allocator().free(gltf_buffer);
-
-    asset_block = gltf.load(state.gpa.allocator(), gltf_buffer) catch unreachable;
-
-    // create a small checker-board image and texture view
     state.checkerboard_tex_view = sg.makeView(.{
         .texture = .{
             .image = sg.makeImage(.{
@@ -379,34 +357,7 @@ export fn init() void {
         },
     });
 
-    // ...and a sampler object with default attributes
-    state.bind.samplers[shd.SMP_smp] = sg.makeSampler(.{});
-
-    // shader and pipeline object
-    state.pip = sg.makePipeline(.{
-        .shader = sg.makeShader(shd.texcubeShaderDesc(sg.queryBackend())),
-        .layout = init: {
-            var l = sg.VertexLayoutState{};
-            l.attrs[shd.ATTR_texcube_pos].format = .FLOAT3;
-            l.attrs[shd.ATTR_texcube_color0].format = .UBYTE4N;
-            l.attrs[shd.ATTR_texcube_texcoord0].format = .SHORT2N;
-            break :init l;
-        },
-        .index_type = .UINT16,
-        .depth = .{
-            .compare = .LESS_EQUAL,
-            .write_enabled = true,
-        },
-        .cull_mode = .BACK,
-    });
-
-    // pass action for clearing the frame buffer
-    state.pass_action.colors[0] = .{
-        .load_action = .CLEAR,
-        .clear_value = .{ .r = 0.25, .g = 0.5, .b = 0.75, .a = 1 },
-    };
-
-    // physics
+    // Physics
 
     const alloc = std.heap.page_allocator;
 
@@ -466,6 +417,65 @@ export fn init() void {
     //         vec3.new(1 + r.float(f32) * 6, 50 + r.float(f32) * 50, 1 + r.float(f32) * 6),
     //     );
     // }
+
+    // Load map from gltf
+
+    {
+        state.gpa = .init;
+
+        const gltf_buffer: []align(4) const u8 = std.fs.cwd().readFileAllocOptions(
+            state.gpa.allocator(),
+            "art/testcubes.glb",
+            1024 * 1024,
+            null,
+            .@"4",
+            null,
+        ) catch unreachable;
+        defer state.gpa.allocator().free(gltf_buffer);
+
+        asset_block = gltf.load(state.gpa.allocator(), gltf_buffer) catch unreachable;
+    }
+}
+
+// #INIT MARK: init()
+export fn init() void {
+    sg.setup(.{
+        .environment = sglue.environment(),
+        .logger = .{ .func = slog.func },
+    });
+
+    simgui.setup(.{
+        .logger = .{ .func = slog.func },
+    });
+
+    // ...and a sampler object with default attributes
+    state.bind.samplers[shd.SMP_smp] = sg.makeSampler(.{});
+
+    // shader and pipeline object
+    state.pip = sg.makePipeline(.{
+        .shader = sg.makeShader(shd.texcubeShaderDesc(sg.queryBackend())),
+        .layout = init: {
+            var l = sg.VertexLayoutState{};
+            l.attrs[shd.ATTR_texcube_pos].format = .FLOAT3;
+            l.attrs[shd.ATTR_texcube_color0].format = .UBYTE4N;
+            l.attrs[shd.ATTR_texcube_texcoord0].format = .SHORT2N;
+            break :init l;
+        },
+        .index_type = .UINT16,
+        .depth = .{
+            .compare = .LESS_EQUAL,
+            .write_enabled = true,
+        },
+        .cull_mode = .BACK,
+    });
+
+    // pass action for clearing the frame buffer
+    state.pass_action.colors[0] = .{
+        .load_action = .CLEAR,
+        .clear_value = .{ .r = 0.25, .g = 0.5, .b = 0.75, .a = 1 },
+    };
+
+    initSystems() catch unreachable;
 }
 
 fn keyAxisInput(negative: bool, positive: bool) f32 {
