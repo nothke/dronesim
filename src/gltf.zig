@@ -41,7 +41,27 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
     // Image / Texture
 
     for (gltf.data.images) |gltf_image| {
-        var image = try zigimg.Image.fromMemory(alloc, gltf_image.data.?);
+        var image_data: []const u8 = undefined;
+
+        if (gltf_image.uri) |uri| {
+            log("URI: {s}", .{uri});
+            const startIndex = std.mem.indexOf(u8, uri, ",").?;
+            const input_string = uri[startIndex + 1 ..];
+
+            log("URI: {s}", .{input_string});
+
+            const decoder = std.base64.standard.Decoder;
+            const binSize = try decoder.calcSizeForSlice(input_string);
+            const data = try alloc.alloc(u8, binSize);
+            try decoder.decode(data, input_string);
+            image_data = data;
+        } else {
+            if (gltf_image.data) |gltf_image_data| {
+                image_data = gltf_image_data;
+            } else log("NO IMAGE DATA", .{});
+        }
+
+        var image = try zigimg.Image.fromMemory(alloc, image_data);
         try image.convert(alloc, .rgba32);
 
         const bytes = image.pixels.asConstBytes(); // try alloc.dupe(u8, image.pixels.asConstBytes());
