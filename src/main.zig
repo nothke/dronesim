@@ -311,6 +311,11 @@ const Material = struct {
     texture: ?*Texture,
 };
 
+const MeshData = struct {
+    vertices: std.ArrayList(Vertex),
+    indices: std.ArrayList(u16),
+};
+
 const Primitive = struct {
     material: ?*Material = null,
     index_count: u32 = 0,
@@ -318,14 +323,15 @@ const Primitive = struct {
     index_buffer: sg.Buffer = .{},
     data: ?*MeshData = null,
 
-    fn freeData(self: *Primitive, alloc: std.mem.Allocator) void {
-        if (self.data) |data| {
-            data.vertices.deinit(alloc);
-            data.indices.deinit(alloc);
+    fn freeMeshData(self: *Primitive, alloc: std.mem.Allocator) void {
+        if (self.data) |data_ptr| {
+            data_ptr.vertices.deinit(alloc);
+            data_ptr.indices.deinit(alloc);
 
-            alloc.free(data);
+            alloc.destroy(data_ptr);
+
+            self.data = null;
         }
-        self.data = null;
     }
 };
 
@@ -337,11 +343,6 @@ const Mesh = struct {
             .primitives = try .initCapacity(alloc, 8),
         };
     }
-};
-
-const MeshData = struct {
-    vertices: std.ArrayList(Vertex),
-    indices: std.ArrayList(u16),
 };
 
 const Node = struct {
@@ -641,6 +642,14 @@ fn deinitGLTF() void {
 
     for (asset_block.nodes.items) |*node| {
         node.freeName(alloc);
+    }
+
+    for (asset_block.meshes.items) |*mesh| {
+        for (mesh.primitives.items) |*primitive| {
+            primitive.freeMeshData(alloc);
+        }
+
+        mesh.primitives.deinit(alloc);
     }
 
     asset_block.deinit(alloc);
