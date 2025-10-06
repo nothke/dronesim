@@ -38,9 +38,16 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
     var asset_block: AssetBlock = undefined;
     try asset_block.init(alloc);
 
-    // Image / Texture
+    // Image
 
-    for (gltf.data.images) |gltf_image| {
+    log("", .{});
+    log("--- IMAGES ---", .{});
+    log("", .{});
+
+    var imageList = try std.ArrayList(Texture).initCapacity(alloc, gltf.data.images.len);
+    defer imageList.deinit(alloc);
+
+    for (gltf.data.images, 0..) |gltf_image, imgi| {
         var image_data: []const u8 = undefined;
 
         if (gltf_image.uri) |uri| {
@@ -63,7 +70,7 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
 
         const bytes = image.pixels.asConstBytes(); // try alloc.dupe(u8, image.pixels.asConstBytes());
 
-        log("Image {}: {s}", .{ asset_block.textures.items.len, gltf_image.name orelse "NO NAME" });
+        log("Image {}: {s}", .{ imgi, gltf_image.name orelse "NO NAME" });
         log("     -- width {}, height {}, format {}", .{ image.width, image.height, image.pixelFormat() });
 
         const image_view = sg.makeView(.{
@@ -82,7 +89,7 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
 
         // state.bind.views[shd.VIEW_tex] = image_view;
 
-        try asset_block.textures.append(alloc, .{
+        imageList.appendAssumeCapacity(.{
             .image = image,
             .view = image_view,
         });
@@ -90,7 +97,24 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
         log("     -- view id: {}, bytes ptr {*}", .{ image_view.id, bytes.ptr });
     }
 
+    log("", .{});
+    log("--- TEXTURES ---", .{});
+    log("", .{});
+
+    // Texture
+    for (gltf.data.textures) |gltf_texture| {
+        log("Texture:", .{});
+        if (gltf_texture.source) |source_index| {
+            log("   -- source image: {}", .{source_index});
+            try asset_block.textures.append(alloc, imageList.items[source_index]);
+        }
+    }
+
     // Material
+
+    log("", .{});
+    log("--- MATERIALS ---", .{});
+    log("", .{});
 
     for (gltf.data.materials) |gltf_material| {
         log("", .{});
@@ -102,10 +126,11 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
         var tex: ?*Texture = null;
 
         if (gltf_material.metallic_roughness.base_color_texture) |gltfTexture| {
+            log("   - has color texture! Index: {}", .{gltfTexture.index});
+
             std.debug.assert(asset_block.textures.items.len > gltfTexture.index);
 
             tex = &asset_block.textures.items[gltfTexture.index];
-            log("   - has color texture! Index: {}", .{gltfTexture.index});
         } else {
             log("   - no texture", .{});
         }
@@ -117,6 +142,10 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
     }
 
     // Mesh / Primitive
+
+    log("", .{});
+    log("--- MESHES ---", .{});
+    log("", .{});
 
     for (gltf.data.meshes) |gltf_mesh| {
         // const mesh_ptr = try GLTFState.meshes.addOne(alloc);
@@ -244,6 +273,10 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
     } // for meshes
 
     // Node
+
+    log("", .{});
+    log("--- NODES ---", .{});
+    log("", .{});
 
     for (gltf.data.nodes) |gltf_node| {
         var node: Node = .{};
