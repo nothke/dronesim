@@ -7,7 +7,9 @@ Just `zig build run` with Zig 0.15.1.
 ### TODO:
 - [x] joystick/gamepad axis input support
 - [x] read configs from file
-- [ ] write configs to file
-- [ ] GLTF model and texture loading
+- [x] write configs to file
+- [x] GLTF model and texture loading
+- [ ] Triangle-mesh collisions
+- [ ] Nice map
 - [ ] per-rotor physics
 - [ ] better shading - lighting and shadows
