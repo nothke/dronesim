@@ -436,18 +436,6 @@ export fn init() void {
 
     asset_block = gltf.load(state.gpa.allocator(), gltf_buffer) catch unreachable;
 
-    const gpa = state.gpa.allocator();
-    cube_mesh = @import("cube.zig").createCubeMesh(gpa) catch unreachable;
-    cube_mat = .{ .color = .{ 0, 1, 0, 1 }, .texture = null };
-    cube_mesh.setMaterial(&cube_mat);
-
-    const cube_node = Node{
-        .mesh = &cube_mesh,
-        .m = mat4.translate(.{ .x = 5 }),
-    };
-
-    asset_block.nodes.append(gpa, cube_node) catch unreachable;
-
     // create a small checker-board image and texture view
     state.checkerboard_tex_view = sg.makeView(.{
         .texture = .{
