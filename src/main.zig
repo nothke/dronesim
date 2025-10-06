@@ -363,19 +363,19 @@ fn initSystems() !void {
 
     try phy.init(alloc, .{});
 
-    const broadphase_layer_interface = alloc.create(BroadPhaseLayerInterface) catch unreachable;
+    const broadphase_layer_interface = try alloc.create(BroadPhaseLayerInterface);
     broadphase_layer_interface.* = BroadPhaseLayerInterface.init();
 
-    const object_vs_broad_phase_layer_filter = alloc.create(ObjectVsBroadPhaseLayerFilter) catch unreachable;
+    const object_vs_broad_phase_layer_filter = try alloc.create(ObjectVsBroadPhaseLayerFilter);
     object_vs_broad_phase_layer_filter.* = .{};
 
-    const object_layer_pair_filter = alloc.create(ObjectLayerPairFilter) catch unreachable;
+    const object_layer_pair_filter = try alloc.create(ObjectLayerPairFilter);
     object_layer_pair_filter.* = .{};
 
-    const contact_listener = alloc.create(ContactListener) catch unreachable;
+    const contact_listener = try alloc.create(ContactListener);
     contact_listener.* = .{};
 
-    state.physics_system = phy.PhysicsSystem.create(
+    state.physics_system = try phy.PhysicsSystem.create(
         @as(*const phy.BroadPhaseLayerInterface, @ptrCast(broadphase_layer_interface)),
         @as(*const phy.ObjectVsBroadPhaseLayerFilter, @ptrCast(object_vs_broad_phase_layer_filter)),
         @as(*const phy.ObjectLayerPairFilter, @ptrCast(object_layer_pair_filter)),
@@ -385,7 +385,7 @@ fn initSystems() !void {
             .max_body_pairs = 1024,
             .max_contact_constraints = 1024,
         },
-    ) catch unreachable;
+    );
 
     defer state.physics_system.optimizeBroadPhase();
 
@@ -394,15 +394,16 @@ fn initSystems() !void {
     // physics spawning
 
     // #DRONEINIT
-    state.droneBodyId = createBoxBody(body_interface, vec3.new(0.1, 0.05, 0.1), vec3.new(0, 1, 20), true) catch unreachable;
+    state.droneBodyId = try createBoxBody(body_interface, vec3.new(0.1, 0.05, 0.1), vec3.new(0, 1, 20), true);
 
     state.cubes = std.ArrayListUnmanaged(WorldCube).initBuffer(&state.cubesBuffer);
 
+    // Ground
     createBox(body_interface, vec3.zero(), vec3.new(1000, 1, 1000));
 
     // createBox(body_interface, vec3.new(0, 5, 10), vec3.new(10, 10, 10));
     // createBox(body_interface, vec3.new(0, 5, -10), vec3.new(10, 10, 10));
-    createBox(body_interface, vec3.new(5, 5, -40), vec3.new(10, 10, 10));
+    // createBox(body_interface, vec3.new(5, 5, -40), vec3.new(10, 10, 10));
     // createBox(body_interface, vec3.new(-5, 5, -30), vec3.new(10, 10, 10));
 
     // var pcg = std.Random.Pcg.init(234583423);
@@ -423,17 +424,17 @@ fn initSystems() !void {
     {
         state.gpa = .init;
 
-        const gltf_buffer: []align(4) const u8 = std.fs.cwd().readFileAllocOptions(
+        const gltf_buffer: []align(4) const u8 = try std.fs.cwd().readFileAllocOptions(
             state.gpa.allocator(),
             "art/testcubes.glb",
             1024 * 1024,
             null,
             .@"4",
             null,
-        ) catch unreachable;
+        );
         defer state.gpa.allocator().free(gltf_buffer);
 
-        asset_block = gltf.load(state.gpa.allocator(), gltf_buffer) catch unreachable;
+        asset_block = try gltf.load(state.gpa.allocator(), gltf_buffer);
     }
 }
 
