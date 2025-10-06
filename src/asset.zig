@@ -109,10 +109,10 @@ pub const AssetBlock = struct {
     materials: std.ArrayList(Material) = undefined,
 
     pub fn init(self: *AssetBlock, alloc: std.mem.Allocator) !void {
-        self.nodes = try .initCapacity(alloc, 64);
-        self.meshes = try .initCapacity(alloc, 64);
-        self.textures = try .initCapacity(alloc, 64);
-        self.materials = try .initCapacity(alloc, 64);
+        self.nodes = try .initCapacity(alloc, 1024);
+        self.meshes = try .initCapacity(alloc, 1024);
+        self.textures = try .initCapacity(alloc, 1024);
+        self.materials = try .initCapacity(alloc, 1024);
     }
 
     /// Only deinits top-level lists
