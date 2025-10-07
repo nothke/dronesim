@@ -3,6 +3,7 @@ const zgltf = @import("zgltf");
 const main = @import("main.zig");
 const zigimg = @import("zigimg");
 const sg = @import("sokol").gfx;
+const phy = @import("zphysics");
 
 const math = @import("math.zig");
 const vec3 = math.Vec3;
@@ -38,7 +39,7 @@ pub const Material = struct {
 
 pub const MeshData = struct {
     vertices: std.ArrayList(Vertex),
-    indices: std.ArrayList(u16),
+    indices: std.ArrayList(u32),
 
     fn init(alloc: std.mem.Allocator, vertices_capacity: usize, indices_capacity: usize) MeshData {
         return .{
@@ -54,6 +55,7 @@ pub const Primitive = struct {
     vertex_buffer: sg.Buffer = .{},
     index_buffer: sg.Buffer = .{},
     data: ?*MeshData = null,
+    collider: ?*phy.Shape = null,
 
     pub fn freeMeshData(self: *Primitive, alloc: std.mem.Allocator) void {
         if (self.data) |data_ptr| {
@@ -92,6 +94,7 @@ pub const Node = struct {
     m: mat4 = .identity(),
     // if node has no mesh, its a dummy
     mesh: ?*Mesh = null,
+    physics_body: ?*phy.BodyId = null,
 
     pub fn freeName(self: *Node, alloc: std.mem.Allocator) void {
         if (self.name.len != 0) {

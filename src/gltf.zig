@@ -236,7 +236,16 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
                         indices.appendAssumeCapacity(vi);
                     }
                 } else if (accessor.component_type == .unsigned_integer) {
-                    @panic("u32 indices are not supported");
+                    const view = try gltf.getDataFromBufferView(u32, alloc, accessor, gltf.glb_binary.?);
+                    defer alloc.free(view);
+
+                    try indices.ensureTotalCapacity(alloc, view.len);
+
+                    log("    -- INDICES: count: {}, triangles: {}, type: int", .{ view.len, @divExact(view.len, 3) });
+
+                    for (view) |vi| {
+                        indices.appendAssumeCapacity(vi);
+                    }
                 }
             } else {
                 if (gltf_primitive.mode == .triangles) {

@@ -1,6 +1,7 @@
 const std = @import("std");
 const phy = @import("zphysics");
 const vec3 = @import("math.zig").Vec3;
+const asset = @import("asset.zig");
 
 // Jolt
 
@@ -160,4 +161,34 @@ pub fn createBoxBody(body_interface: *phy.BodyInterface, size: vec3, pos: vec3, 
     );
 }
 
-// End of physics
+// pub fn createMeshCollider(mesh_data: *const asset.MeshData) *phy.Shape {
+//     std.debug.assert(mesh_data.vertices.items.len > 0);
+//     std.debug.assert(mesh_data.indices.items.len > 0);
+
+//     const settings = try phy.MeshShapeSettings.create(
+//         mesh_data.vertices.items.ptr,
+//         @intCast(mesh_data.vertices.items.len),
+//         @sizeOf(asset.Vertex),
+//         mesh_data.indices.items,
+//     );
+//     defer settings.asShapeSettings().release();
+
+//     const shape = try settings.asShapeSettings().createShape();
+//     //defer shape.release();
+//     return shape;
+// }
+
+// pub fn addStaticBody(
+//     body_interface: *phy.BodyInterface,
+//     shape: *phy.Shape,
+//     pos: vec3,
+//     rot: [f32]4,
+// ) !phy.BodyId {
+//     return try body_interface.createAndAddBody(.{
+//         .position = .{ pos.x, pos.y, pos.z, 0 },
+//         .rotation = rot,
+//         .shape = shape,
+//         .motion_type = .static,
+//         .object_layer = object_layers.non_moving,
+//     }, .activate);
+// }

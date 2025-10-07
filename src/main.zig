@@ -260,6 +260,22 @@ fn initSystems() !void {
 
         asset_block = try gltf.load(state.gpa.allocator(), gltf_buffer);
     }
+
+    // Create mesh colliders for map
+
+    // {
+    //     for (asset_block.meshes.items) |mesh| {
+    //         for (mesh.primitives.items) |*primitive| {
+    //             if (primitive.data) |mesh_data| {
+    //                 primitive.collider = physics.createMeshCollider(mesh_data);
+    //             }
+    //         }
+    //     }
+
+    //     for (asset_block.nodes.items) |*node| {
+    //         node.physics_body = physics.addStaticBody(body_interface, shape);
+    //     }
+    // }
 }
 
 // #INIT MARK: init()
@@ -687,7 +703,8 @@ pub fn main() !void {
         if (eql(arg, "-h") or eql(arg, "--help")) {
             var stdout = std.fs.File.stdout();
             _ = try stdout.write(
-                \\-f --fullscreen   - start in fullscreen
+                \\ DroneSim - A little FPV racing simulator
+                \\      -f --fullscreen   - start in fullscreen
                 \\
             );
             return;
