@@ -125,9 +125,14 @@ pub const AssetBlock = struct {
 
     /// Full deinit of all assets
     pub fn deinit(asset_block: *AssetBlock, alloc: std.mem.Allocator) void {
+        var tex_hashset = std.AutoHashMap(*anyopaque, void).init(alloc);
         for (asset_block.textures.items) |*texture| {
-            texture.image.deinit(alloc);
+            if (!tex_hashset.contains(texture.image.pixels.rgba32.ptr)) {
+                texture.image.deinit(alloc);
+                tex_hashset.put(texture.image.pixels.rgba32.ptr, {}) catch unreachable;
+            }
         }
+        tex_hashset.deinit();
 
         for (asset_block.nodes.items) |*node| {
             node.freeName(alloc);
