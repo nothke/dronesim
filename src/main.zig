@@ -409,7 +409,7 @@ fn initSystems() !void {
 
         const gltf_buffer: []align(4) const u8 = try std.fs.cwd().readFileAllocOptions(
             state.gpa.allocator(),
-            "art/testcubes.glb",
+            "art/map.glb",
             std.math.maxInt(usize),
             null,
             .@"4",
@@ -426,6 +426,7 @@ export fn init() void {
     sg.setup(.{
         .environment = sglue.environment(),
         .logger = .{ .func = slog.func },
+        .buffer_pool_size = 1024,
     });
 
     simgui.setup(.{
