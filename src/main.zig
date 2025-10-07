@@ -303,7 +303,7 @@ export fn init() void {
             l.attrs[shd.ATTR_texcube_texcoord0].format = .FLOAT2;
             break :init l;
         },
-        .index_type = .UINT16,
+        .index_type = .UINT32,
         .depth = .{
             .compare = .LESS_EQUAL,
             .write_enabled = true,
