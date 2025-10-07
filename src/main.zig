@@ -675,6 +675,25 @@ pub fn main() !void {
     const b = &a;
     std.log.info("b: {any}", .{b});
 
+    var window_args = struct {
+        fullscreen: bool = false,
+    }{};
+
+    var args = std.process.args();
+    while (args.next()) |arg| {
+        if (eql(arg, "-f") or eql(arg, "--fullscreen")) {
+            window_args.fullscreen = true;
+        }
+        if (eql(arg, "-h") or eql(arg, "--help")) {
+            var stdout = std.fs.File.stdout();
+            _ = try stdout.write(
+                \\-f --fullscreen   - start in fullscreen
+                \\
+            );
+            return;
+        }
+    }
+
     // bindings ini
     {
         const fileOrErr = std.fs.cwd().openFile(bindingsPath, .{});
@@ -708,7 +727,7 @@ pub fn main() !void {
         .event_cb = input,
         .width = 800,
         .height = 600,
-        .fullscreen = false,
+        .fullscreen = window_args.fullscreen,
         .sample_count = 4,
         .icon = .{ .sokol_default = true },
         .window_title = "DroneSim",
