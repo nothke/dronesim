@@ -456,7 +456,7 @@ export fn frame() void {
         }
     }
 
-    state.physics_system.update(dt, .{}) catch unreachable;
+    state.physics_system.update(dt, .{ .collision_steps = 10 }) catch unreachable;
 
     // drawing
 
