@@ -81,6 +81,7 @@ var configData = struct {
     dragMult: f32 = 2.0,
     angularDragMult: f32 = 0.5,
     cameraTilt: f32 = 20,
+    maxVerticalSpeed: f32 = 30,
 }{};
 
 const configPath = "config.ini";
@@ -423,6 +424,7 @@ export fn frame() void {
     const mutBodies = state.physics_system.getBodiesMutUnsafe();
 
     var d_right = vec3.right();
+    var vertical_speed_kmh: f32 = 0;
 
     for (mutBodies) |body| {
         if (!phy.isValidBodyPointer(body) or body.motion_properties == null) continue;
@@ -434,7 +436,11 @@ export fn frame() void {
             const d_up = rot_mat.up();
             d_right = rot_mat.right();
 
-            const upForce = vec3.mul(d_up, yAccel * configData.thrustForceMult);
+            const vertical_speed = vec3.fromArr(body.getLinearVelocity()).dot(d_up);
+            vertical_speed_kmh = vertical_speed * 3.6;
+            const speed_limit_mult: f32 = std.math.clamp(1 - vertical_speed / configData.maxVerticalSpeed, 0, 1);
+
+            const upForce = vec3.mul(d_up, yAccel * configData.thrustForceMult * speed_limit_mult);
             body.addForce(upForce.asArr());
             body.addTorque(.{
                 -configData.rollPitchTorqueMult * pitchAccel,
@@ -549,6 +555,7 @@ export fn frame() void {
         defer ig.igEnd();
 
         ig.igText("speed kmh: %.2f", speedKmH);
+        ig.igText("vert speed kmh: %.2f", vertical_speed_kmh);
 
         _ = ig.igCheckbox("use gamepad", &state.useGamepad);
 
