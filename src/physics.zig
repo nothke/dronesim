@@ -171,6 +171,7 @@ pub fn createMeshCollider(mesh_data: *const asset.MeshData) !*phy.Shape {
         @sizeOf(asset.Vertex),
         mesh_data.indices.items,
     );
+    settings.sanitize();
     defer settings.asShapeSettings().release();
 
     const shape = try settings.asShapeSettings().createShape();
