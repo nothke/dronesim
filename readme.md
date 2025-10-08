@@ -9,7 +9,7 @@ Just `zig build run` with Zig 0.15.1.
 - [x] read configs from file
 - [x] write configs to file
 - [x] GLTF model and texture loading
-- [ ] Triangle-mesh collisions
+- [x] Triangle-mesh collisions
 - [ ] Nice map
 - [ ] per-rotor physics
 - [ ] better shading - lighting and shadows
