@@ -78,6 +78,7 @@ var configData = struct {
     yawTorqueMult: f32 = 0.1,
     dragMult: f32 = 2.0,
     angularDragMult: f32 = 0.5,
+    cameraTilt: f32 = 20,
 }{};
 
 const configPath = "config.ini";
@@ -375,13 +376,6 @@ export fn frame() void {
 
     const dt: f32 = @floatCast(sapp.frameDuration());
 
-    // Move to mat4
-    const dUp = vec3.new(state.view.m[0][1], state.view.m[1][1], state.view.m[2][1]);
-    const dRight = vec3.new(state.view.m[0][0], state.view.m[1][0], state.view.m[2][0]);
-    //const dForward = vec3.new(state.view.m[0][2], state.view.m[1][2], state.view.m[2][2]);
-
-    //dUp = dUp.add(dForward.mul(-0.2)).norm();
-
     // #input
 
     if (state.iterationsToNextGamepadPoll > state.iterationsToWaitForGamepadPoll) {
@@ -415,12 +409,19 @@ export fn frame() void {
 
     const mutBodies = state.physics_system.getBodiesMutUnsafe();
 
+    var d_right = vec3.right();
+
     for (mutBodies) |body| {
         if (!phy.isValidBodyPointer(body) or body.motion_properties == null) continue;
 
         if (body.id == state.droneBodyId) {
             // #DRONEUPDATE
-            const upForce = vec3.mul(dUp, yAccel * configData.thrustForceMult);
+
+            const rot_mat = mat4.rotateByQuat(body.rotation);
+            const d_up = rot_mat.up();
+            d_right = rot_mat.right();
+
+            const upForce = vec3.mul(d_up, yAccel * configData.thrustForceMult);
             body.addForce(upForce.asArr());
             body.addTorque(.{
                 -configData.rollPitchTorqueMult * pitchAccel,
@@ -456,7 +457,7 @@ export fn frame() void {
 
             speedKmH = vec3.fromArr(body.getLinearVelocity()).len() * 3.6;
 
-            const camTilt = mat4.rotate(30, dRight);
+            const camTilt = mat4.rotate(-configData.cameraTilt, d_right);
             const rotMat = mat4.rotateFromMat3(&r);
 
             v = v.mul(rotMat);
