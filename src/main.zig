@@ -241,7 +241,7 @@ fn initSystems() !void {
     state.cubes = std.ArrayListUnmanaged(WorldCube).initBuffer(&state.cubesBuffer);
 
     // Ground
-    createBox(body_interface, vec3.zero(), vec3.new(1000, 1, 1000));
+    createBox(body_interface, vec3.new(0, -100, 0), vec3.new(1000, 100, 1000));
 
     // Load map from gltf
 
@@ -250,7 +250,7 @@ fn initSystems() !void {
 
         const gltf_buffer: []align(4) const u8 = try std.fs.cwd().readFileAllocOptions(
             state.gpa.allocator(),
-            "art/map.glb",
+            "art/testcubes.glb",
             std.math.maxInt(usize),
             null,
             .@"4",
@@ -263,19 +263,30 @@ fn initSystems() !void {
 
     // Create mesh colliders for map
 
-    // {
-    //     for (asset_block.meshes.items) |mesh| {
-    //         for (mesh.primitives.items) |*primitive| {
-    //             if (primitive.data) |mesh_data| {
-    //                 primitive.collider = physics.createMeshCollider(mesh_data);
-    //             }
-    //         }
-    //     }
+    {
+        for (asset_block.meshes.items) |mesh| {
+            for (mesh.primitives.items) |*primitive| {
+                if (primitive.data) |mesh_data| {
+                    primitive.collider = try physics.createMeshCollider(mesh_data);
+                }
+            }
+        }
 
-    //     for (asset_block.nodes.items) |*node| {
-    //         node.physics_body = physics.addStaticBody(body_interface, shape);
-    //     }
-    // }
+        for (asset_block.nodes.items) |*node| {
+            if (node.mesh) |mesh| {
+                for (mesh.primitives.items) |primitive| {
+                    if (primitive.collider) |collider| {
+                        _ = try physics.addStaticBody(
+                            body_interface,
+                            collider,
+                            vec3.zero(),
+                            .{ 0, 0, 0, 1 },
+                        );
+                    }
+                }
+            }
+        }
+    }
 }
 
 // #INIT MARK: init()
