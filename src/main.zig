@@ -70,6 +70,8 @@ const state = struct {
 
     var checkerboard_tex_view: sg.View = undefined;
     var white_tex_view: sg.View = undefined;
+
+    var start_pos = vec3.new(0, 1, 20);
 };
 
 var configData = struct {
@@ -237,7 +239,7 @@ fn initSystems() !void {
     // physics spawning
 
     // #DRONEINIT
-    state.droneBodyId = try physics.createBoxBody(body_interface, vec3.new(0.1, 0.1, 0.1), vec3.new(0, 1, 20), true);
+    state.droneBodyId = try physics.createBoxBody(body_interface, vec3.new(0.1, 0.1, 0.1), state.start_pos, true);
 
     state.cubes = std.ArrayListUnmanaged(WorldCube).initBuffer(&state.cubesBuffer);
 
@@ -406,6 +408,17 @@ export fn frame() void {
     yawAccel = std.math.clamp(yawAccel, -1, 1);
 
     // physics #PHYSICSUPDATE
+
+    if (input_state.restart) {
+        var bi = state.physics_system.getBodyInterfaceMut();
+        bi.setPositionRotationAndVelocity(
+            state.droneBodyId,
+            state.start_pos.asArr(),
+            .{ 0, 0, 0, 1 },
+            .{ 0, 0, 0 },
+            .{ 0, 0, 0 },
+        );
+    }
 
     const mutBodies = state.physics_system.getBodiesMutUnsafe();
 
@@ -578,6 +591,7 @@ pub const InputMap = struct {
     pub var yaw_left = K.A;
     pub var yaw_right = K.D;
     pub var exit = K.ESCAPE;
+    pub var restart = K.R;
 };
 
 var input_state = std.enums.EnumFieldStruct(std.meta.DeclEnum(InputMap), bool, false){};
