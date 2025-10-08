@@ -107,6 +107,18 @@ pub const Mat4 = extern struct {
         };
     }
 
+    pub fn forward(self: Mat4) Vec3 {
+        return Vec3.new(self.m[0][2], self.m[1][2], self.m[2][2]);
+    }
+
+    pub fn right(self: Mat4) Vec3 {
+        return Vec3.new(self.m[0][0], self.m[1][0], self.m[2][0]);
+    }
+
+    pub fn up(self: Mat4) Vec3 {
+        return Vec3.new(self.m[0][1], self.m[1][1], self.m[2][1]);
+    }
+
     pub fn getTranslation(self: Mat4) Vec3 {
         return .{
             .x = self.m[3][0],
@@ -168,14 +180,14 @@ pub const Mat4 = extern struct {
         };
     }
 
-    pub fn mul(left: Mat4, right: Mat4) Mat4 {
+    pub fn mul(l: Mat4, r: Mat4) Mat4 {
         var res = Mat4.zero();
         for (0..4) |col| {
             for (0..4) |row| {
-                res.m[col][row] = left.m[0][row] * right.m[col][0] +
-                    left.m[1][row] * right.m[col][1] +
-                    left.m[2][row] * right.m[col][2] +
-                    left.m[3][row] * right.m[col][3];
+                res.m[col][row] = l.m[0][row] * r.m[col][0] +
+                    l.m[1][row] * r.m[col][1] +
+                    l.m[2][row] * r.m[col][2] +
+                    l.m[3][row] * r.m[col][3];
             }
         }
         return res;
@@ -193,11 +205,11 @@ pub const Mat4 = extern struct {
         return res;
     }
 
-    pub fn lookat(eye: Vec3, center: Vec3, up: Vec3) Mat4 {
+    pub fn lookat(eye: Vec3, center: Vec3, _up: Vec3) Mat4 {
         var res = Mat4.zero();
 
         const f = Vec3.norm(Vec3.sub(center, eye));
-        const s = Vec3.norm(Vec3.cross(f, up));
+        const s = Vec3.norm(Vec3.cross(f, _up));
         const u = Vec3.cross(s, f);
 
         res.m[0][0] = s.x;
