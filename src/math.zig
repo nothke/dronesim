@@ -107,6 +107,56 @@ pub const Mat4 = extern struct {
         };
     }
 
+    pub fn getTranslation(self: Mat4) Vec3 {
+        return .{
+            .x = self.m[3][0],
+            .y = self.m[3][1],
+            .z = self.m[3][2],
+        };
+    }
+
+    pub fn getRotation(self: Mat4) [4]f32 {
+        var dst = [4]f32{ 0, 0, 0, 1 };
+
+        const m = &self.m;
+
+        const trace = m[0][0] + m[1][1] + m[2][2];
+
+        if (trace > 0) {
+            const root = math.sqrt(trace + 1.0);
+            dst[3] = 0.5 * root;
+            const rootInv = 0.5 / root;
+
+            dst[0] = (m[1][2] - m[2][1]) * rootInv;
+            dst[1] = (m[2][0] - m[0][2]) * rootInv;
+            dst[2] = (m[0][1] - m[1][0]) * rootInv;
+        } else {
+            var i: usize = 0;
+
+            if (m[1][1] > m[0][0]) {
+                i = 1;
+            }
+
+            if (m[2][2] > m[i][i]) {
+                i = 2;
+            }
+
+            const j = (i + 1) % 3;
+            const k = (i + 2) % 3;
+
+            const root = math.sqrt(m[i][i] - m[j][j] - m[k][k] + 1.0);
+            dst[i] = 0.5 * root;
+
+            const rootInv = 0.5 / root;
+
+            dst[3] = (m[j][k] - m[k][j]) * rootInv;
+            dst[j] = (m[j][i] - m[i][j]) * rootInv;
+            dst[k] = (m[k][i] - m[i][k]) * rootInv;
+        }
+
+        return dst;
+    }
+
     pub fn zero() Mat4 {
         return Mat4{
             .m = [_][4]f32{

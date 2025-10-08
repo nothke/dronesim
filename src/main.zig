@@ -236,7 +236,7 @@ fn initSystems() !void {
     // physics spawning
 
     // #DRONEINIT
-    state.droneBodyId = try physics.createBoxBody(body_interface, vec3.new(0.1, 0.05, 0.1), vec3.new(0, 1, 20), true);
+    state.droneBodyId = try physics.createBoxBody(body_interface, vec3.new(0.1, 0.1, 0.1), vec3.new(0, 1, 20), true);
 
     state.cubes = std.ArrayListUnmanaged(WorldCube).initBuffer(&state.cubesBuffer);
 
@@ -250,7 +250,7 @@ fn initSystems() !void {
 
         const gltf_buffer: []align(4) const u8 = try std.fs.cwd().readFileAllocOptions(
             state.gpa.allocator(),
-            "art/testcubes.glb",
+            "art/smoltest.glb",
             std.math.maxInt(usize),
             null,
             .@"4",
@@ -279,8 +279,8 @@ fn initSystems() !void {
                         _ = try physics.addStaticBody(
                             body_interface,
                             collider,
-                            vec3.zero(),
-                            .{ 0, 0, 0, 1 },
+                            node.m.getTranslation(),
+                            node.m.getRotation(),
                         );
                     }
                 }
