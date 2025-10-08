@@ -147,7 +147,7 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
     log("--- MESHES ---", .{});
     log("", .{});
 
-    for (gltf.data.meshes) |gltf_mesh| {
+    for (gltf.data.meshes, 0..) |gltf_mesh, mi| {
         // const mesh_ptr = try GLTFState.meshes.addOne(alloc);
         // mesh_ptr.* = .init();
 
@@ -156,7 +156,7 @@ pub fn load(alloc: std.mem.Allocator, gltf_buffer: []align(4) const u8) !AssetBl
 
         std.debug.assert(mesh_ptr.primitives.items.len == 0);
 
-        log("Mesh:", .{});
+        log("Mesh {}:", .{mi});
 
         for (gltf_mesh.primitives) |gltf_primitive| {
             var mesh_data = try alloc.create(MeshData);

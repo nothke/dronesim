@@ -220,12 +220,12 @@ pub const Mat4 = extern struct {
         return res;
     }
 
-    pub fn rotate(angle: f32, axis_unorm: Vec3) Mat4 {
+    pub fn rotate(angleDegrees: f32, axis_unorm: Vec3) Mat4 {
         var res = Mat4.identity();
 
         const axis = Vec3.norm(axis_unorm);
-        const sin_theta = math.sin(radians(angle));
-        const cos_theta = math.cos(radians(angle));
+        const sin_theta = math.sin(radians(angleDegrees));
+        const cos_theta = math.cos(radians(angleDegrees));
         const cos_value = 1.0 - cos_theta;
 
         res.m[0][0] = (axis.x * axis.x * cos_value) + cos_theta;

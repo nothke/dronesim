@@ -35,7 +35,7 @@ const c = @cImport({
 });
 
 const max_cubes = 1024;
-const max_bodies = 1024;
+const max_bodies = 10240;
 
 // MARK: state
 const state = struct {
@@ -199,7 +199,7 @@ fn initSystems() !void {
         },
     });
 
-    // Physics
+    // Physics #INITPHYSICS
 
     const alloc = std.heap.page_allocator;
 
@@ -250,7 +250,7 @@ fn initSystems() !void {
 
         const gltf_buffer: []align(4) const u8 = try std.fs.cwd().readFileAllocOptions(
             state.gpa.allocator(),
-            "art/smoltest.glb",
+            "art/map.glb",
             std.math.maxInt(usize),
             null,
             .@"4",
@@ -261,20 +261,28 @@ fn initSystems() !void {
         asset_block = try gltf.load(state.gpa.allocator(), gltf_buffer);
     }
 
-    // Create mesh colliders for map
+    // Create mesh colliders for map #COLLIDERS
 
     {
-        for (asset_block.meshes.items) |mesh| {
-            for (mesh.primitives.items) |*primitive| {
+        std.log.info("-- Creating colliders --", .{});
+
+        for (asset_block.meshes.items, 0..) |mesh, mi| {
+            for (mesh.primitives.items, 0..) |*primitive, pi| {
                 if (primitive.data) |mesh_data| {
+                    std.log.info("- mesh: {} prim: {}", .{ mi, pi });
                     primitive.collider = try physics.createMeshCollider(mesh_data);
                 }
             }
         }
 
+        std.log.info("-- Creating physics for nodes --", .{});
+
+        var total_bodies: i32 = 0;
         for (asset_block.nodes.items) |*node| {
+            std.log.info("Making physics body for node: {s}", .{node.name});
             if (node.mesh) |mesh| {
                 for (mesh.primitives.items) |primitive| {
+                    std.log.info("- prim: {}", .{total_bodies});
                     if (primitive.collider) |collider| {
                         _ = try physics.addStaticBody(
                             body_interface,
@@ -283,6 +291,7 @@ fn initSystems() !void {
                             node.m.getRotation(),
                         );
                     }
+                    total_bodies += 1;
                 }
             }
         }
@@ -367,11 +376,11 @@ export fn frame() void {
     const dt: f32 = @floatCast(sapp.frameDuration());
 
     // Move to mat4
-    var dUp = vec3.new(state.view.m[0][1], state.view.m[1][1], state.view.m[2][1]);
-    //const dRight = vec3.new(state.view.m[0][0], state.view.m[1][0], state.view.m[2][0]);
-    const dForward = vec3.new(state.view.m[0][2], state.view.m[1][2], state.view.m[2][2]);
+    const dUp = vec3.new(state.view.m[0][1], state.view.m[1][1], state.view.m[2][1]);
+    const dRight = vec3.new(state.view.m[0][0], state.view.m[1][0], state.view.m[2][0]);
+    //const dForward = vec3.new(state.view.m[0][2], state.view.m[1][2], state.view.m[2][2]);
 
-    dUp = dUp.add(dForward.mul(-0.7)).norm();
+    //dUp = dUp.add(dForward.mul(-0.2)).norm();
 
     // #input
 
@@ -447,9 +456,11 @@ export fn frame() void {
 
             speedKmH = vec3.fromArr(body.getLinearVelocity()).len() * 3.6;
 
+            const camTilt = mat4.rotate(30, dRight);
             const rotMat = mat4.rotateFromMat3(&r);
 
             v = v.mul(rotMat);
+            v = v.mul(camTilt);
             v = v.mul(mat4.translate(vec3.new(dpos[0], dpos[1], dpos[2]).mul(-1)));
 
             state.view = v;
