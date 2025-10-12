@@ -233,8 +233,6 @@ fn initSystems() !void {
         },
     );
 
-    defer state.physics_system.optimizeBroadPhase();
-
     const body_interface = state.physics_system.getBodyInterfaceMut();
 
     // physics spawning
@@ -300,6 +298,8 @@ fn initSystems() !void {
             }
         }
     }
+
+    state.physics_system.optimizeBroadPhase();
 }
 
 // #INIT MARK: init()
