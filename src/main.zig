@@ -740,8 +740,9 @@ pub fn main() !void {
     }{};
 
     {
-        var args = try std.process.argsWithAllocator(std.heap.page_allocator);
-        defer args.deinit();
+        var args_buff: [256]u8 = undefined;
+        var fba = std.heap.FixedBufferAllocator.init(&args_buff);
+        var args = try std.process.argsWithAllocator(fba.allocator());
 
         while (args.next()) |arg| {
             if (eql(arg, "-f") or eql(arg, "--fullscreen")) {
