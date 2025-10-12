@@ -72,6 +72,8 @@ const state = struct {
     var white_tex_view: sg.View = undefined;
 
     var start_pos = vec3.new(0, 1, 20);
+
+    var break_after_backend_query = false;
 };
 
 var configData = struct {
@@ -314,6 +316,13 @@ export fn init() void {
         .logger = .{ .func = slog.func },
     });
 
+    std.log.info("Sokol backend: {}", .{sg.queryBackend()});
+
+    if (state.break_after_backend_query) {
+        sapp.requestQuit();
+        return;
+    }
+
     // ...and a sampler object with default attributes
     state.bind.samplers[shd.SMP_smp] = sg.makeSampler(.{});
 
@@ -370,6 +379,9 @@ fn drawCube(vp: *const mat4, pos: vec3, size: vec3) void {
 
 // #LOOP MARK: frame()
 export fn frame() void {
+    if (state.break_after_backend_query)
+        return;
+
     simgui.newFrame(.{
         .width = sapp.width(),
         .height = sapp.height(),
@@ -627,13 +639,15 @@ export fn input(event: ?*const sapp.Event) void {
 
 // MARK: cleanup()
 export fn cleanup() void {
-    std.log.debug("Cleanup!", .{});
+    if (!state.break_after_backend_query) {
+        std.log.debug("Cleanup!", .{});
 
-    asset_block.deinit(state.gpa.allocator());
-    _ = state.gpa.deinit();
+        asset_block.deinit(state.gpa.allocator());
+        _ = state.gpa.deinit();
 
-    sg.shutdown();
-    phy.deinit();
+        sg.shutdown();
+        phy.deinit();
+    }
 }
 
 // MARK: Config
@@ -739,19 +753,27 @@ pub fn main() !void {
         fullscreen: bool = false,
     }{};
 
-    var args = std.process.args();
-    while (args.next()) |arg| {
-        if (eql(arg, "-f") or eql(arg, "--fullscreen")) {
-            window_args.fullscreen = true;
-        }
-        if (eql(arg, "-h") or eql(arg, "--help")) {
-            var stdout = std.fs.File.stdout();
-            _ = try stdout.write(
-                \\ DroneSim - A little FPV racing simulator
-                \\      -f --fullscreen   - start in fullscreen
-                \\
-            );
-            return;
+    {
+        var args_buff: [256]u8 = undefined;
+        var fba = std.heap.FixedBufferAllocator.init(&args_buff);
+        var args = try std.process.argsWithAllocator(fba.allocator());
+
+        while (args.next()) |arg| {
+            if (eql(arg, "-f") or eql(arg, "--fullscreen")) {
+                window_args.fullscreen = true;
+            }
+            if (eql(arg, "-h") or eql(arg, "--help")) {
+                var stdout = std.fs.File.stdout();
+                _ = try stdout.write(
+                    \\ DroneSim - A little FPV racing simulator
+                    \\      -f --fullscreen   - start in fullscreen
+                    \\
+                );
+                return;
+            }
+            if (eql(arg, "--backend")) {
+                state.break_after_backend_query = true;
+            }
         }
     }
 
