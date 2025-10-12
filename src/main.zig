@@ -739,19 +739,23 @@ pub fn main() !void {
         fullscreen: bool = false,
     }{};
 
-    var args = std.process.args();
-    while (args.next()) |arg| {
-        if (eql(arg, "-f") or eql(arg, "--fullscreen")) {
-            window_args.fullscreen = true;
-        }
-        if (eql(arg, "-h") or eql(arg, "--help")) {
-            var stdout = std.fs.File.stdout();
-            _ = try stdout.write(
-                \\ DroneSim - A little FPV racing simulator
-                \\      -f --fullscreen   - start in fullscreen
-                \\
-            );
-            return;
+    {
+        var args = try std.process.argsWithAllocator(std.heap.page_allocator);
+        defer args.deinit();
+
+        while (args.next()) |arg| {
+            if (eql(arg, "-f") or eql(arg, "--fullscreen")) {
+                window_args.fullscreen = true;
+            }
+            if (eql(arg, "-h") or eql(arg, "--help")) {
+                var stdout = std.fs.File.stdout();
+                _ = try stdout.write(
+                    \\ DroneSim - A little FPV racing simulator
+                    \\      -f --fullscreen   - start in fullscreen
+                    \\
+                );
+                return;
+            }
         }
     }
 
