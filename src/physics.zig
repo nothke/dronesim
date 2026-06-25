@@ -161,6 +161,8 @@ pub fn createBoxBody(body_interface: *phy.BodyInterface, size: vec3, pos: vec3, 
     );
 }
 
+var times_called: i32 = 0;
+
 pub fn createMeshCollider(mesh_data: *const asset.MeshData) !*phy.Shape {
     std.debug.assert(mesh_data.vertices.items.len > 0);
     std.debug.assert(mesh_data.indices.items.len > 0);
@@ -185,6 +187,10 @@ pub fn addStaticBody(
     pos: vec3,
     rot: [4]f32,
 ) !phy.BodyId {
+    times_called += 1;
+    std.log.info("Times called: {}", .{times_called});
+    std.log.info("pos {any}, rot {any}, shape {*}", .{ pos, rot, shape });
+
     return try body_interface.createAndAddBody(.{
         .position = .{ pos.x, pos.y, pos.z, 0 },
         .rotation = rot,

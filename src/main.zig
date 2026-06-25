@@ -455,7 +455,7 @@ export fn frame() void {
             const upForce = vec3.mul(d_up, yAccel * configData.thrustForceMult * speed_limit_mult);
             body.addForce(upForce.asArr());
             body.addTorque(.{
-                -configData.rollPitchTorqueMult * pitchAccel,
+                configData.rollPitchTorqueMult * pitchAccel,
                 configData.yawTorqueMult * yawAccel,
                 configData.rollPitchTorqueMult * rollAccel,
             });
