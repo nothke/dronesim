@@ -5,28 +5,28 @@
     .minimum_zig_version = "0.15.1",
     .dependencies = .{
         .sokol = .{
-            .url = "git+https://github.com/floooh/sokol-zig.git#f54f1b00aa2b2421f06422bd35a0930ff0b17197",
-            .hash = "sokol-0.1.0-pb1HKxdSLgC1cy3VKT18XqI35Yg_V5z7g090GkYtfBoV",
+            .url = "git+https://github.com/floooh/sokol-zig.git#f9b2aa8fc0b0e78c946299e7b418fd04a9ef3559",
+            .hash = "sokol-0.1.0-pb1HK4RrNwA1QTln_ZtLaEBne8Dn6zgZH4UVA45cGdnM",
         },
         .zphysics = .{
-            .url = "git+https://github.com/zig-gamedev/zphysics.git#87dbfd003e31623cede1137aa8a70f86619b5d5b",
-            .hash = "zphysics-0.2.0-dev-nZDEAOXUQgCrjn_iSZke7zpWwqRUe_BRlrzRrDdXXPEz",
+            .url = "git+https://github.com/Fahien/zphysics.git#eca0403fce974b445224cb6ebf9f563d036a6669",
+            .hash = "zphysics-0.2.0-dev-nZDEANfjQgAYG-Xv1J55-XbIrsJmwbaqaD_pMdgqySNN",
         },
         .cimgui = .{
-            .url = "git+https://github.com/floooh/dcimgui.git#33c99ef426b68030412b5a4b11487a23da9d4f13",
-            .hash = "cimgui-0.1.0-44ClkQRJlABdFMKRqIG8KDD6jy1eQbgPO335NziPYjmL",
+            .url = "git+https://github.com/floooh/dcimgui.git#3c2b41a9333b1195e2c2f8ce6a2d3e50660a73bf",
+            .hash = "cimgui-0.1.0-44ClkR8dmgDqqnfloyLE1bUAtl4zSKTT1wxaHSEC0ikV",
         },
         .libstem_gamepad = .{
-            .url = "git+https://github.com/nothke/libstem-gamepad-zig.git#1170e67f21053e263f0420848071471a8d0f16b9",
-            .hash = "libstem_gamepad-1.4.2-zoH3k4vVAQAz3t8CwTeC4fCI4mGEUxw8jzMNvemNXerE",
+            .url = "git+https://github.com/nothke/libstem-gamepad-zig.git#2b0212e386113c080b4c81d0f262241e58540895",
+            .hash = "libstem_gamepad-1.4.2-zoH3k5bWAQAdSb1vjDEADAGGlBFnLPWP77yWaDc7CXLi",
         },
         .zgltf = .{
-            .url = "git+https://github.com/kooparse/zgltf.git#fc3bb36672fb71f05e0226160051e7104b0c6865",
-            .hash = "zgltf-0.1.0-sX6QArASAgBCGBz2QR-lv48sEuXhENvQyi3y8weqJzwZ",
+            .url = "git+https://github.com/Nefistofeles/zgltf.git#b58eb9a6ee833e0ce9bec42d4d685708bb82a56b",
+            .hash = "zgltf-0.1.0-sX6QAlQUAgDJAgxW4pP6h6GnlRnfgV1uIN4tQm_UVS4N",
         },
         .zigimg = .{
-            .url = "git+https://github.com/zigimg/zigimg.git#d7717b3617d58160635623fe86d4bf86065498e0",
-            .hash = "zigimg-0.1.0-8_eo2vBrFQAvZmO9NzDP85_qC5JFksuMdyI_KMMEr4bq",
+            .url = "git+https://github.com/zigimg/zigimg.git#096115a3eeae1a4c477496d575f1f1f74865387c",
+            .hash = "zigimg-0.1.0-8_eo2mHBFwDLhWjXriR17_b7VF6qML1f98Xokp7ZZbop",
         },
     },
     .paths = .{
