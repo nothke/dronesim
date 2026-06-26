@@ -55,7 +55,7 @@ const state = struct {
     var droneBodyId: phy.BodyId = undefined;
 
     var cubesBuffer: [max_cubes]WorldCube = undefined;
-    var cubes: std.ArrayListUnmanaged(WorldCube) = .{};
+    var cubes: std.ArrayListUnmanaged(WorldCube) = undefined;
 
     var attachedGamepad: ?*c.struct_Gamepad_device = null; //
 
@@ -66,7 +66,7 @@ const state = struct {
 
     var useGamepad = true;
 
-    var gpa: std.heap.GeneralPurposeAllocator(.{}) = undefined;
+    var gpa: std.heap.DebugAllocator(.{}) = undefined;
 
     var checkerboard_tex_view: sg.View = undefined;
     var white_tex_view: sg.View = undefined;
@@ -102,6 +102,8 @@ const AxisBindings = struct {
 };
 
 var axisBindings: AxisBindings = .{};
+
+var io: std.Io = undefined;
 
 const WorldCube = struct {
     pos: vec3,
@@ -252,11 +254,11 @@ fn initSystems() !void {
     {
         state.gpa = .init;
 
-        const gltf_buffer: []align(4) const u8 = try std.fs.cwd().readFileAllocOptions(
-            state.gpa.allocator(),
+        const gltf_buffer: []align(4) const u8 = try std.Io.Dir.cwd().readFileAllocOptions(
+            io,
             "art/map.glb",
-            std.math.maxInt(usize),
-            null,
+            state.gpa.allocator(),
+            std.Io.Limit.limited(std.math.maxInt(usize)),
             .@"4",
             null,
         );
@@ -744,7 +746,7 @@ fn loadConfig() !void {
 }
 
 // MARK: main()
-pub fn main() !void {
+pub fn main(main_init: std.process.Init) !void {
     const a: i32 = 4;
     const b = &a;
     std.log.info("b: {any}", .{b});
@@ -753,17 +755,20 @@ pub fn main() !void {
         fullscreen: bool = false,
     }{};
 
+    io = main_init.io;
+
     {
-        var args_buff: [256]u8 = undefined;
-        var fba = std.heap.FixedBufferAllocator.init(&args_buff);
-        var args = try std.process.argsWithAllocator(fba.allocator());
+        var args = main_init.minimal.args.iterate();
+
+        var stdout_buffer: [1024]u8 = undefined;
+        var stdout_file_writer = std.Io.File.stdout().writer(io, &stdout_buffer);
+        const stdout = &stdout_file_writer.interface;
 
         while (args.next()) |arg| {
             if (eql(arg, "-f") or eql(arg, "--fullscreen")) {
                 window_args.fullscreen = true;
             }
             if (eql(arg, "-h") or eql(arg, "--help")) {
-                var stdout = std.fs.File.stdout();
                 _ = try stdout.write(
                     \\ DroneSim - A little FPV racing simulator
                     \\      -f --fullscreen   - start in fullscreen
@@ -779,7 +784,7 @@ pub fn main() !void {
 
     // bindings ini
     {
-        const fileOrErr = std.fs.cwd().openFile(bindingsPath, .{});
+        const fileOrErr = std.Io.Dir.cwd().openFile(bindingsPath, .{});
 
         if (fileOrErr) |file| {
             defer file.close();

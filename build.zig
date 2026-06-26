@@ -19,7 +19,9 @@ pub fn build(b: *std.Build) void {
     });
 
     const cimgui_conf = cimgui.getConfig(false);
-    dep_sokol.artifact("sokol_clib").addIncludePath(dep_cimgui.path(cimgui_conf.include_dir));
+
+    const sokol_clib = dep_sokol.artifact("sokol_clib");
+    sokol_clib.root_module.addIncludePath(dep_cimgui.path(cimgui_conf.include_dir));
 
     const dep_zgltf = b.dependency("zgltf", .{});
     const dep_zigimg = b.dependency("zigimg", .{ .target = target, .optimize = optimize });
@@ -50,10 +52,10 @@ pub fn build(b: *std.Build) void {
         } }),
     });
 
-    exe.linkLibrary(dep_zphysics.artifact("joltc"));
+    exe.root_module.linkLibrary(dep_zphysics.artifact("joltc"));
 
     const gamepad_dep = b.dependency("libstem_gamepad", .{ .target = target, .optimize = optimize });
-    exe.linkLibrary(gamepad_dep.artifact("stem_gamepad"));
+    exe.root_module.linkLibrary(gamepad_dep.artifact("stem_gamepad"));
 
     b.installArtifact(exe);
 
