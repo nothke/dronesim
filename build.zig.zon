@@ -2,7 +2,7 @@
     .name = .dronesim,
     .version = "0.0.0",
     .fingerprint = 0x48a7d8ba9ed01ae5,
-    .minimum_zig_version = "0.15.1",
+    .minimum_zig_version = "0.16.0",
     .dependencies = .{
         .sokol = .{
             .url = "git+https://github.com/floooh/sokol-zig.git#f9b2aa8fc0b0e78c946299e7b418fd04a9ef3559",
@@ -25,8 +25,8 @@
             .hash = "zgltf-0.1.0-sX6QAlQUAgDJAgxW4pP6h6GnlRnfgV1uIN4tQm_UVS4N",
         },
         .zigimg = .{
-            .url = "git+https://github.com/zigimg/zigimg.git#096115a3eeae1a4c477496d575f1f1f74865387c",
-            .hash = "zigimg-0.1.0-8_eo2mHBFwDLhWjXriR17_b7VF6qML1f98Xokp7ZZbop",
+            .url = "git+https://github.com/nothke/zigimg.git#581795265e1caee099baae32883c0f9d4f28f81a",
+            .hash = "zigimg-0.1.0-8_eo2jPCFwDJF89NMU5gJjpTRoFdda26viRcdxyJP0Ks",
         },
     },
     .paths = .{

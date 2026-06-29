@@ -747,10 +747,6 @@ fn loadConfig() !void {
 
 // MARK: main()
 pub fn main(main_init: std.process.Init) !void {
-    const a: i32 = 4;
-    const b = &a;
-    std.log.info("b: {any}", .{b});
-
     var window_args = struct {
         fullscreen: bool = false,
     }{};
@@ -821,4 +817,8 @@ pub fn main(main_init: std.process.Init) !void {
         .window_title = "DroneSim",
         .logger = .{ .func = slog.func },
     });
+}
+
+test {
+    _ = ini;
 }
