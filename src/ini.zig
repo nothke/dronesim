@@ -8,7 +8,7 @@ const Entry = struct {
 const whitespace = " \t\r";
 
 pub fn extractEntry(trimmed_line: []const u8) ?Entry {
-    if (std.mem.indexOf(u8, trimmed_line, "=")) |index| {
+    if (std.mem.find(u8, trimmed_line, "=")) |index| {
         const keySlice = std.mem.trim(u8, trimmed_line[0..index], whitespace);
         const valueSlice = std.mem.trim(u8, trimmed_line[(index + 1)..], whitespace);
 
@@ -20,7 +20,7 @@ pub fn extractEntry(trimmed_line: []const u8) ?Entry {
 }
 
 pub const EntryReader = struct {
-    reader: *std.io.Reader,
+    reader: *std.Io.Reader,
 
     pub fn next(iter: *EntryReader) ?Entry {
         while (iter.reader.takeDelimiterExclusive('\n')) |line| {
@@ -50,7 +50,7 @@ pub const EntryReader = struct {
 };
 
 /// returns length of string
-pub fn saveStruct(strc: anytype, writer: *std.io.Writer) !usize {
+pub fn saveStruct(strc: anytype, writer: *std.Io.Writer) !usize {
     const start = writer.end;
     inline for (std.meta.fields(@TypeOf(strc))) |field| {
         _ = try writer.write(field.name);
@@ -77,7 +77,7 @@ pub fn saveStruct(strc: anytype, writer: *std.io.Writer) !usize {
 /// An allocator is used to store string values read from a file.
 /// If you do not have any string values, you can set it to null.
 /// The function doesn't return allocation pointers, so use an allocator that you can easily free in bulk like an arena.
-pub fn loadStruct(strc: anytype, reader: *std.io.Reader, allocator: ?std.mem.Allocator) !void {
+pub fn loadStruct(strc: anytype, reader: *std.Io.Reader, allocator: ?std.mem.Allocator) !void {
     var iter = EntryReader{ .reader = reader };
 
     if (@typeInfo(@TypeOf(strc)) != .pointer or @typeInfo(@TypeOf(strc.*)) != .@"struct")
@@ -127,7 +127,7 @@ test "read_struct" {
         nothing: []const u8 = "",
     }{};
 
-    var reader = std.io.Reader.fixed(&string);
+    var reader = std.Io.Reader.fixed(&string);
 
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     try loadStruct(&strc, &reader, arena.allocator());
@@ -140,7 +140,7 @@ test "read_struct" {
 
 test "write_struct" {
     var buff = std.mem.zeroes([1024]u8);
-    var writer = std.io.Writer.fixed(&buff);
+    var writer = std.Io.Writer.fixed(&buff);
 
     const strc = struct {
         num: i32 = 8,
@@ -164,7 +164,7 @@ test "line_iterator" {
         \\
     .*;
 
-    var reader = std.io.Reader.fixed(&string);
+    var reader = std.Io.Reader.fixed(&string);
     var ini = EntryReader{ .reader = &reader };
 
     const eql = std.testing.expectEqualStrings;

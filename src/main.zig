@@ -713,26 +713,26 @@ fn processConfigLine(key: []const u8, value: []const u8) !void {
 }
 
 fn saveConfig() !void {
-    if (std.fs.cwd().createFile(configPath, .{})) |file| {
-        defer file.close();
+    if (std.Io.Dir.cwd().createFile(io, configPath, .{})) |file| {
+        defer file.close(io);
 
         var buff = std.mem.zeroes([1024]u8);
-        var writer = file.writer(&buff);
+        var writer = file.writer(io, &buff);
 
-        _ = try ini.saveStruct(configData, &writer.interface);
+        _ = try ini.saveStruct(configData, &writer);
 
-        try writer.interface.flush();
+        try writer.flush();
     } else |err| {
         return err;
     }
 }
 
 fn loadConfig() !void {
-    if (std.fs.cwd().openFile(configPath, .{})) |file| {
-        defer file.close();
+    if (std.Io.Dir.cwd().openFile(io, configPath, .{})) |file| {
+        defer file.close(io);
 
         var buff = std.mem.zeroes([1024]u8);
-        var reader = file.reader(&buff);
+        var reader = file.reader(io, &buff);
 
         try ini.loadStruct(&configData, &reader.interface, null);
     } else |err| {
@@ -784,13 +784,13 @@ pub fn main(main_init: std.process.Init) !void {
 
     // bindings ini
     {
-        const fileOrErr = std.Io.Dir.cwd().openFile(bindingsPath, .{});
+        const fileOrErr = std.Io.Dir.cwd().openFile(io, bindingsPath, .{});
 
         if (fileOrErr) |file| {
-            defer file.close();
+            defer file.close(io);
 
             var buff: [1024]u8 = undefined;
-            var reader = file.readerStreaming(&buff);
+            var reader = file.readerStreaming(io, &buff);
             var iniIter = ini.EntryReader{ .reader = &reader.interface };
 
             while (iniIter.next()) |res| {
