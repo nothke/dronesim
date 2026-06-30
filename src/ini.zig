@@ -23,12 +23,10 @@ pub const EntryReader = struct {
     reader: *std.Io.Reader,
 
     pub fn next(iter: *EntryReader) ?Entry {
-    
-    
-    	while (iter.reader.takeDelimiter('\n')) |maybe_line| {
-            
+        while (iter.reader.takeDelimiter('\n')) |maybe_line| {
+
             //std.log.info("PROCESSING LINE: '{s}'", .{line});
-	    const line = maybe_line orelse return null;
+            const line = maybe_line orelse return null;
             const lineTr = std.mem.trim(u8, line, whitespace);
 
             if (lineTr.len == 0)
@@ -43,8 +41,9 @@ pub const EntryReader = struct {
             } else if (extractEntry(lineTr)) |entry| {
                 return entry;
             }
+        } else |_| {
+            return null;
         }
-        else |_| { return null; }
     }
 };
 
